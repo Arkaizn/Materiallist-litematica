@@ -8,7 +8,7 @@ Material lists for building projects as a website, served straight from the Mine
 
 Requires Fabric API. Download the jar from the [Releases](https://github.com/Arkaizn/Materiallist-litematica/releases) page, or build it yourself with `mod/build.sh` (no Gradle needed, just the Prism instance); it ends up in `mod/build/materiallist-litematica-2.0.0+26.3.jar`.
 
-To publish a new release: build the jar, commit it in `mod/build/`, then push a tag `v<version>` (e.g. `v2.0.1`). GitHub Actions attaches the jar to a new release.
+To publish a new release: build the jar, commit it in `mod/build/`, then push a tag `v<version>` (e.g. `v2.0.1`), or push a commit whose message contains `[release]` (the tag is taken from `version` in `mod/resources/fabric.mod.json`). GitHub Actions attaches the jar to a new release.
 
 ## Server setup
 
