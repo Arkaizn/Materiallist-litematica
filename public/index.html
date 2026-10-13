@@ -115,6 +115,8 @@ tr.done .iname{text-decoration:line-through}
 .hero-row .icon{width:44px;height:44px}
 .hero-t{font-size:20px;font-weight:650}
 .hero-s{color:var(--muted);margin-top:2px}
+.hero-for{margin-top:8px} .hero-for .lbl{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px}
+.hero-row .hero-for .chip .icon{width:16px;height:16px}
 h3.sec{font-size:14px;margin:22px 0 4px}
 h3.sec small{color:var(--muted);font-weight:400;margin-left:6px}
 tr.nextup td{background:rgba(227,163,59,.07)}
@@ -662,7 +664,11 @@ function renderNext() {
   // At the top: exactly one step
   let hero, heroId = null, heroCls = 'craft';
   if (ready.length) { const g = ready[0]; heroId = g.id; hero = `<div class="hero-t">Craft: ${fmt(g.left)}× ${esc(MC.displayName(g.id))}</div><div class="hero-s">You have all the material for it${ready.length > 1 ? `, and for ${ready.length - 1} more (see below)` : ''}.</div>`; }
-  else if (pl.gather.length) { const id = pl.gather[0]; heroId = id; heroCls = 'gather'; hero = `<div class="hero-t">Gather: ${esc(MC.displayName(id))}</div><div class="hero-s">${amount(id, N[id].missing)} more · have ${fmt(N[id].have)} of ${fmt(N[id].need)}</div>`; }
+  else if (pl.gather.length) { const id = pl.gather[0]; heroId = id; heroCls = 'gather'; 
+    // What the raw material is for: the final products still waiting on it, with how many to craft and how much of it each takes
+    const tgt = goals.filter((g) => g.id !== id && g.left > 0 && g.plan.nodes[id] && g.plan.nodes[id].need > 0);
+    const chips = tgt.slice(0, 6).map((g) => `<span class="chip">${icon(g.id)} ${fmt(g.left)}× ${esc(MC.displayName(g.id))} <span class="sub2" style="display:inline">needs ${fmt(g.plan.nodes[id].need)}</span></span>`).join('');
+    hero = `<div class="hero-t">Gather: ${fmt(N[id].missing)}× ${esc(MC.displayName(id))}</div><div class="hero-s">${amount(id, N[id].missing)} more · have ${fmt(N[id].have)} of ${fmt(N[id].need)}</div>${chips ? `<div class="hero-for"><span class="lbl">to craft</span>${chips}${tgt.length > 6 ? ` <span class="sub2" style="display:inline">+ ${tgt.length - 6} more</span>` : ''}${N[id].final ? ' <span class="sub2" style="display:inline">· and to place directly</span>' : ''}</div>` : ''}`; }
   else if (left) hero = `<div class="hero-t">All materials are here – time to build</div><div class="hero-s">${fmt(left)} blocks left to place.</div>`;
   else hero = '<div class="hero-t">Done 🎉</div><div class="hero-s">Everything is placed.</div>';
 

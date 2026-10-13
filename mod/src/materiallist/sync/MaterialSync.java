@@ -22,6 +22,10 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.Container;
 import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.ChestType;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 
@@ -171,10 +175,23 @@ public class MaterialSync implements ClientModInitializer {
         try {
             if (mc.player == null || mc.level == null || !litematica || !connected()) return;
             if (!(screen instanceof AbstractContainerScreen<?> acs) || acs.getMenu() instanceof InventoryMenu) return;
-            if (screen != lastScreen) { openPos = lastHit != null && mc.level.getBlockEntity(lastHit) instanceof Container ? lastHit : null; lastScreen = screen; }
+            if (screen != lastScreen) {
+                openPos = lastHit != null && mc.level.getBlockEntity(lastHit) instanceof Container ? lastHit : null;
+                if (openPos != null) {
+                    // Double chests: both halves share one mark, kept under the same half the server uses
+                    BlockPos half = otherHalf(mc.level, openPos);
+                    if (half != null) {
+                        BlockPos main = half.asLong() < openPos.asLong() ? half : openPos, side = main == half ? openPos : half;
+                        String moved = marks.remove(coords(side));
+                        if (moved != null) { marks.putIfAbsent(coords(main), moved); dirty = true; }
+                        openPos = main;
+                    }
+                }
+                lastScreen = screen;
+            }
             if (openPos == null) return;
             final BlockPos pos = openPos;
-            final String key = pos.getX() + "," + pos.getY() + "," + pos.getZ();
+            final String key = coords(pos);
             Button button = Button.builder(Component.literal(label(key)), b -> {
                 List<String[]> opts = LitematicaBridge.active();
                 String cur = marks.get(key);
@@ -195,6 +212,15 @@ public class MaterialSync implements ClientModInitializer {
               .build();
             Screens.getWidgets(screen).add(button);
         } catch (Throwable t) { warn("Button could not be shown", t); }
+    }
+
+    private static String coords(BlockPos p) { return p.getX() + "," + p.getY() + "," + p.getZ(); }
+    /** The other half of a double chest, null for everything else */
+    private static BlockPos otherHalf(Level level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        if (state.getBlock() instanceof ChestBlock && state.hasProperty(ChestBlock.TYPE) && state.getValue(ChestBlock.TYPE) != ChestType.SINGLE)
+            return pos.relative(ChestBlock.getConnectedDirection(state)).immutable();
+        return null;
     }
 
     private String label(String key) {
