@@ -46,6 +46,7 @@ import java.util.Map;
 public class MaterialSync implements ClientModInitializer {
     static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final long MAX_FILE = 64L << 20;
+    private static final int BUTTON_W = 176;
 
     private final Path dir = FabricLoader.getInstance().getConfigDir().resolve("materiallist-sync");
     private final Path oldDir = FabricLoader.getInstance().getConfigDir().resolve("materialliste-sync");   // before the rename
@@ -207,7 +208,7 @@ public class MaterialSync implements ClientModInitializer {
                 dirty = true;
                 ClientPlayNetworking.send(new Net.ToServer("mark", new Gson().toJson(o).getBytes(StandardCharsets.UTF_8)));
                 b.setMessage(Component.literal(label(key)));
-            }).bounds(width / 2 - 88, 2, 176, 18)
+            }).bounds(width / 2 - BUTTON_W / 2, 2, BUTTON_W, 18)
               .tooltip(Tooltip.create(Component.literal("Click to choose which Litematica placement this chest collects material for. Only collection chests count for Materiallist.")))
               .build();
             Screens.getWidgets(screen).add(button);
@@ -223,11 +224,19 @@ public class MaterialSync implements ClientModInitializer {
         return null;
     }
 
+    /**
+     * Button text, shortened until it fits: text that is too wide makes the button scroll it inside a scissor area,
+     * and at the screen edge that area can end up outside the window (crash in the renderer).
+     */
     private String label(String key) {
         String m = marks.get(key);
         if (m == null) return "Materiallist: not counted";
-        String name = m.contains("|") ? m.substring(0, m.indexOf('|')) : m;
-        return "§aCollection chest: " +
- (name.length() > 20 ? name.substring(0, 19) + "…" : name);
+        String name = m.contains("|") ? m.substring(0, m.indexOf('|')) : m, full = "§aCollection chest: " + name;
+        var font = Minecraft.getInstance().font;
+        while (font.width(full) > BUTTON_W - 12 && !name.isEmpty()) {
+            name = name.substring(0, name.length() - 1);
+            full = "§aCollection chest: " + name.stripTrailing() + "…";
+        }
+        return full;
     }
 }
