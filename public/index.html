@@ -117,6 +117,9 @@ tr.done .iname{text-decoration:line-through}
 .hero-s{color:var(--muted);margin-top:2px}
 .hero-for{margin-top:8px} .hero-for .lbl{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px}
 .hero-row .hero-for .chip .icon{width:16px;height:16px}
+.hero-row>div{flex:1;min-width:0} .hero-bar{display:flex;align-items:center;gap:10px;margin-top:8px;max-width:520px;color:var(--muted);font-size:12.5px}
+.hero-bar .bar{flex:1;height:8px;margin:0;border-radius:4px} .hero.gather .hero-bar .bar>i{background:var(--warn)}
+.ign{width:24px;padding:2px 0;font-size:12px} .ign.on{color:var(--warn)} tr.item.ignored .iname>span:first-of-type{opacity:.75}
 h3.sec{font-size:14px;margin:22px 0 4px}
 h3.sec small{color:var(--muted);font-weight:400;margin-left:6px}
 tr.nextup td{background:rgba(227,163,59,.07)}
@@ -168,7 +171,7 @@ textarea{width:100%;min-height:200px;resize:vertical}
   .top,.content{padding-left:16px;padding-right:16px}
 }
 @media print{
-  aside,.tabs,.toolbar,.have button,.expand,.top button,.v3d,.refresh{display:none!important}
+  aside,.tabs,.toolbar,.have button,.expand,.ign,.top button,.v3d,.refresh{display:none!important}
   .app{display:block}
   body{background:#fff;color:#000}
   td,th{border-color:#ccc!important;color:#000!important}
@@ -206,10 +209,10 @@ const SHULKER = 27;
 
 const S = {
   me: null, projects: [], current: null, combo: new Set(), view: 'list', custom: {},
-  filter: '', hideDone: false, rawShowDone: false, refresh: 5, groupCat: true, sort: 'count', open: new Set(),
+  filter: '', hideDone: false, hideIgnored: false, rawShowDone: false, refresh: 5, groupCat: true, sort: 'count', open: new Set(),
 };
 try { Object.assign(S, JSON.parse(localStorage.getItem('mcml-ui') || '{}'), { projects: [], current: null, open: new Set() }); S.combo = new Set(S.combo || []); } catch { S.combo = new Set(); }
-function saveUi() { try { localStorage.setItem('mcml-ui', JSON.stringify({ view: S.view, refresh: S.refresh, rawShowDone: S.rawShowDone, hideDone: S.hideDone, groupCat: S.groupCat, sort: S.sort, combo: [...S.combo], lastId: S.current && S.current.id })); } catch {} }
+function saveUi() { try { localStorage.setItem('mcml-ui', JSON.stringify({ view: S.view, refresh: S.refresh, rawShowDone: S.rawShowDone, hideDone: S.hideDone, hideIgnored: S.hideIgnored, groupCat: S.groupCat, sort: S.sort, combo: [...S.combo], lastId: S.current && S.current.id })); } catch {} }
 
 async function api(path, opts) {
   const r = await fetch('/api' + path, opts);
@@ -474,13 +477,16 @@ function haveCell(p, id, h) {
 const ago = (t) => { const s = Math.max(0, Math.round((Date.now() - t) / 1000)); return s < 60 ? `${s} s ago` : s < 3600 ? `${Math.round(s / 60)} min ago` : s < 86400 ? `${Math.round(s / 3600)} h ago` : new Date(t).toLocaleString(LOCALE, { dateStyle: 'short', timeStyle: 'short' }); };
 function syncLine(p) {
   if (p.combo) return '';
-  if (!p.sync) return `<p class="note">No collection chest yet. Look at a chest in the game and run <span class="kbd">/materiallist chest ${esc(p.name)}</span>, then its contents are counted automatically. Until then you can enter the amounts by hand.</p>`;
-  return `<p class="note"><span class="pill sync">Sync</span> The stock comes from ${p.chests === 1 ? 'one collection chest' : fmt(p.chests || 0) + ' collection chests'}${p.countInventory ? ' and the inventories of members who are online' : ''}, last changed ${ago(p.sync.time)}. Your own entries override the value from the game until you click ✎. <button class="ghost" id="unsync" style="padding:1px 6px;font-size:12px">Delete sync data</button></p>`;
+  // Only the owner can switch inventory counting; it also works without a collection chest
+  const inv = p.mine ? `<label style="display:inline-flex;gap:6px;align-items:center;margin-left:6px" title="Adds what you and the other members carry while online, counted every few seconds. Items leave the count again when the player logs off."><input type="checkbox" class="chk" id="invQuick" ${p.countInventory ? 'checked' : ''}> Count inventories</label>` : '';
+  if (!p.sync) return `<p class="note">No collection chest yet. Look at a chest in the game and run <span class="kbd">/materiallist chest ${esc(p.name)}</span>, then its contents are counted automatically. Until then you can enter the amounts by hand.${inv}</p>`;
+  return `<p class="note"><span class="pill sync">Sync</span> The stock comes from ${p.chests === 1 ? 'one collection chest' : fmt(p.chests || 0) + ' collection chests'}${p.countInventory ? ' and the inventories of members who are online' : ''}, last changed ${ago(p.sync.time)}. Your own entries override the value from the game until you click ✎. <button class="ghost" id="unsync" style="padding:1px 6px;font-size:12px">Delete sync data</button>${inv}</p>`;
 }
 function bindSync(p) {
   const b = $('#unsync');
-  if (b) b.onclick = () => { if (confirm('Delete the amounts transferred from the game for this project?')
-) { delete p.sync; touch(p); persist({ clearSync: true }); rerender(); } };
+  if (b) b.onclick = () => { if (confirm('Delete the amounts transferred from the game for this project?')) { delete p.sync; touch(p); persist({ clearSync: true }); rerender(); } };
+  const q = $('#invQuick');
+  if (q) q.onchange = () => { p.countInventory = q.checked; persist({ countInventory: p.countInventory }); toast(q.checked ? 'Inventories are counted from the next sync on' : 'Inventories are no longer counted'); };
 }
 const VIEW_FN = () => ({ list: renderList, next: renderNext, raw: renderRaw, steps: renderSteps, view3d: render3d, edit: renderEdit });
 function rerender() { (VIEW_FN()[S.view] || renderList)(); }
@@ -509,18 +515,20 @@ function renderList() {
       <select id="sort"><option value="count">By count</option><option value="name">By name</option><option value="remaining">By open</option></select>
       <label><input type="checkbox" class="chk" id="grp" ${S.groupCat ? 'checked' : ''}> Categories</label>
       <label><input type="checkbox" class="chk" id="hd" ${S.hideDone ? 'checked' : ''}> Hide completed</label>
+      <label title="Hides the items you marked with ⊘ (not crafted)"><input type="checkbox" class="chk" id="hi" ${S.hideIgnored ? 'checked' : ''}> Hide ignored</label>
       ${p.combo ? '' : '<button id="resetAll" class="ghost">Reset</button>'}
     </div>
     ${p.combo ? '<p class="note">Combined view (read only). Progress comes from the individual projects.</p>' : ''}
     <table><thead><tr>
       <th style="width:34px"></th><th>Item</th><th class="num">Needed</th><th class="hide-m">Stacks</th><th class="hide-m">Shulker</th>
-      <th class="num">Have</th><th class="num">Open</th><th style="width:30px"></th></tr></thead>
+      <th class="num">Have</th><th class="num">Open</th><th style="width:58px"></th></tr></thead>
       <tbody id="tb"></tbody></table>`;
   $('#sort').value = S.sort;
   $('#q').oninput = (e) => { S.filter = e.target.value; drawRows(); };
   $('#sort').onchange = (e) => { S.sort = e.target.value; saveUi(); drawRows(); };
   $('#grp').onchange = (e) => { S.groupCat = e.target.checked; saveUi(); drawRows(); };
   $('#hd').onchange = (e) => { S.hideDone = e.target.checked; saveUi(); drawRows(); };
+  $('#hi').onchange = (e) => { S.hideIgnored = e.target.checked; saveUi(); drawRows(); };
   const ra = $('#resetAll');
   if (ra) ra.onclick = () => { if (confirm('Delete all manually entered amounts of this project?')) { p.stock = {}; touch(p); persist(); renderList(); } };
   drawRows();
@@ -532,6 +540,8 @@ function drawRows() {
   const q = S.filter.trim().toLowerCase();
   let items = p.items.filter((i) => !q || i.id.includes(q.replace(/ /g, '_')) || MC.displayName(i.id).toLowerCase().includes(q));
   if (S.hideDone) items = items.filter((i) => openOf(i) > 0);
+  const stopSet = new Set(p.stopItems || []);
+  if (S.hideIgnored) items = items.filter((i) => !stopSet.has(i.id));
   const cmp = { count: (a, b) => b.count - a.count, name: (a, b) => MC.displayName(a.id).localeCompare(MC.displayName(b.id)), remaining: (a, b) => openOf(b) - openOf(a) }[S.sort];
   items.sort(cmp);
   let html = '';
@@ -540,17 +550,18 @@ function drawRows() {
     if (cat) html += `<tr class="cat"><td colspan="8">${cat} · ${list.length}</td></tr>`;
     for (const i of list) {
       const h = st[i.id] || 0, built = Math.min(i.count, pl[i.id] || 0), open = openOf(i), done = open === 0;
-      const isStop = (p.stopItems || []).includes(i.id);
+      const isStop = stopSet.has(i.id);
       const canTree = MC.hasRecipe(i.id, { custom: S.custom });
-      html += `<tr class="item ${done ? 'done' : ''}" data-id="${esc(i.id)}" data-need="${i.count - built}">
+      const ign = canTree && !p.combo ? `<button class="ghost ign${isStop ? ' on' : ''}" data-act="ignore" title="${isStop ? 'Ignored: its ingredients and crafting steps are left out. Click to craft it again.' : 'Ignore crafting: I get this another way (e.g. trading). Leaves its ingredients and crafting steps out; the item itself stays on the list.'}">⊘</button>` : '';
+      html += `<tr class="item ${done ? 'done' : ''}${isStop ? ' ignored' : ''}" data-id="${esc(i.id)}" data-need="${i.count - built}">
         <td><input type="checkbox" class="chk" data-act="toggle" ${done ? 'checked' : ''} ${p.combo ? 'disabled' : ''} aria-label="Done"></td>
-        <td><div class="iname">${icon(i.id)}<span>${esc(MC.displayName(i.id))}</span>${isStop ? '<span class="pill raw" title="Not broken down any further">Raw material</span>' : ''}</div></td>
+        <td><div class="iname">${icon(i.id)}<span>${esc(MC.displayName(i.id))}</span>${isStop ? '<span class="pill raw" title="Not crafted: its ingredients and crafting steps are left out">Ignored</span>' : ''}</div></td>
         <td class="num"><b>${fmt(i.count)}</b>${built ? `<div class="sub2">${fmt(built)} placed</div>` : ''}</td>
         <td class="hide-m">${stackText(i.id, i.count)}</td>
         <td class="hide-m">${shulkerText(i.id, i.count)}</td>
         <td class="num">${haveCell(p, i.id, h)}</td>
         <td class="num">${done ? '<span style="color:var(--accent)">✓</span>' : `${fmt(open)}${open >= MC.stackSize(i.id) ? `<div style="font-size:11px">${stackText(i.id, open)}</div>` : ''}`}</td>
-        <td>${canTree ? `<button class="ghost expand" data-act="tree" title="Break down">${S.open.has(i.id) ? '▾' : '▸'}</button>` : ''}</td></tr>`;
+        <td style="white-space:nowrap">${ign}${canTree ? `<button class="ghost expand" data-act="tree" title="Break down">${S.open.has(i.id) ? '▾' : '▸'}</button>` : ''}</td></tr>`;
       if (S.open.has(i.id)) html += `<tr><td></td><td colspan="7">${treeHtml(i.id, i.count, p)}</td></tr>`;
     }
   }
@@ -566,7 +577,7 @@ function treeHtml(id, count, p) {
   };
   const stop = (p.stopItems || []).includes(id);
   return `<div class="tree"><ul>${node(t, true)}</ul>
-    ${p.combo ? '' : `<div style="margin-top:8px"><label style="color:var(--muted);font-size:12.5px;display:inline-flex;gap:6px;align-items:center"><input type="checkbox" class="chk" data-act="stop" data-item="${esc(id)}" ${stop ? 'checked' : ''}> Don't break down in the raw materials view (treat as raw material)</label></div>`}</div>`;
+    ${p.combo ? '' : `<div style="margin-top:8px"><label style="color:var(--muted);font-size:12.5px;display:inline-flex;gap:6px;align-items:center"><input type="checkbox" class="chk" data-act="stop" data-item="${esc(id)}" ${stop ? 'checked' : ''}> Ignore crafting (I get this another way): leave out its ingredients and crafting steps</label></div>`}</div>`;
 }
 // All rows with data-id (checklist, next steps, raw materials) share these actions
 document.addEventListener('change', (e) => {
@@ -596,6 +607,7 @@ document.addEventListener('click', (e) => {
   if (act === 'tree') { S.open.has(id) ? S.open.delete(id) : S.open.add(id); drawRows(); }
   if (p.combo) return;
   if (act === 'stack') { setStock(p, id, (p.stock[id] != null ? p.stock[id] : stockOf(p)[id] || 0) + MC.stackSize(id)); rerender(); }
+  if (act === 'ignore') { const set = new Set(p.stopItems || []); set.has(id) ? set.delete(id) : set.add(id); p.stopItems = [...set]; touch(p); persist(); rerender(); }
   if (act === 'unpin') { delete p.stock[id]; touch(p); persist(); rerender(); }
   if (act === 'craft') { doCraft(p, id); rerender(); }
 });
@@ -661,15 +673,16 @@ function renderNext() {
   const ready = goals.filter((g) => g.state === 'ready'), wait = goals.filter((g) => g.state === 'wait'), have = goals.filter((g) => g.state === 'have');
   const left = Object.values(MC.demandOf(p)).reduce((a, b) => a + b, 0);
 
+  const bar = (have, need) => { const pc = need ? Math.min(100, Math.floor((have / need) * 100)) : 0; return `<div class="hero-bar"><div class="bar"><i style="width:${pc}%"></i></div><span>${fmt(have)} / ${fmt(need)} · ${pc}%</span></div>`; };
   // At the top: exactly one step
   let hero, heroId = null, heroCls = 'craft';
-  if (ready.length) { const g = ready[0]; heroId = g.id; hero = `<div class="hero-t">Craft: ${fmt(g.left)}× ${esc(MC.displayName(g.id))}</div><div class="hero-s">You have all the material for it${ready.length > 1 ? `, and for ${ready.length - 1} more (see below)` : ''}.</div>`; }
+  if (ready.length) { const g = ready[0]; heroId = g.id; hero = `<div class="hero-t">Craft: ${fmt(g.left)}× ${esc(MC.displayName(g.id))}</div><div class="hero-s">You have all the material for it${ready.length > 1 ? `, and for ${ready.length - 1} more (see below)` : ''}.</div>${bar(g.have, g.need)}`; }
   else if (pl.gather.length) { const id = pl.gather[0]; heroId = id; heroCls = 'gather'; 
     // What the raw material is for: the final products still waiting on it, with how many to craft and how much of it each takes
     const tgt = goals.filter((g) => g.id !== id && g.left > 0 && g.plan.nodes[id] && g.plan.nodes[id].need > 0);
     const chips = tgt.slice(0, 6).map((g) => `<span class="chip">${icon(g.id)} ${fmt(g.left)}× ${esc(MC.displayName(g.id))} <span class="sub2" style="display:inline">needs ${fmt(g.plan.nodes[id].need)}</span></span>`).join('');
-    hero = `<div class="hero-t">Gather: ${fmt(N[id].missing)}× ${esc(MC.displayName(id))}</div><div class="hero-s">${amount(id, N[id].missing)} more · have ${fmt(N[id].have)} of ${fmt(N[id].need)}</div>${chips ? `<div class="hero-for"><span class="lbl">to craft</span>${chips}${tgt.length > 6 ? ` <span class="sub2" style="display:inline">+ ${tgt.length - 6} more</span>` : ''}${N[id].final ? ' <span class="sub2" style="display:inline">· and to place directly</span>' : ''}</div>` : ''}`; }
-  else if (left) hero = `<div class="hero-t">All materials are here – time to build</div><div class="hero-s">${fmt(left)} blocks left to place.</div>`;
+    hero = `<div class="hero-t">Gather: ${fmt(N[id].missing)}× ${esc(MC.displayName(id))}</div><div class="hero-s">${amount(id, N[id].missing)} more · have ${fmt(N[id].have)} of ${fmt(N[id].need)}</div>${bar(N[id].have, N[id].need)}${chips ? `<div class="hero-for"><span class="lbl">to craft</span>${chips}${tgt.length > 6 ? ` <span class="sub2" style="display:inline">+ ${tgt.length - 6} more</span>` : ''}${N[id].final ? ' <span class="sub2" style="display:inline">· and to place directly</span>' : ''}</div>` : ''}`; }
+  else if (left) hero = `<div class="hero-t">All materials are here – time to build</div><div class="hero-s">${fmt(left)} blocks left to place.</div>${(() => { const tot = p.items.reduce((a, i) => a + i.count, 0); return bar(tot - left, tot); })()}`;
   else hero = '<div class="hero-t">Done 🎉</div><div class="hero-s">Everything is placed.</div>';
 
   const chk = (id, done) => (p.combo ? '' : `<input type="checkbox" class="chk" data-act="toggle" ${done ? 'checked' : ''} title="${done ? 'Not actually there' : 'I already have it (without subtracting ingredients)'}">`);
@@ -679,7 +692,7 @@ function renderNext() {
     const steps = g.steps.map((n) => `<li><b>${fmt(n.produced)}× ${esc(MC.displayName(n.id))}</b> <span class="sub2" style="display:inline">${esc(n.recipe.via || 'craft')} from ${Object.entries(n.recipe.in).map(([k, v]) => `${fmt(v * n.crafts)} ${esc(MC.displayName(k))}`).join(', ')}</span></li>`).join('');
     const status = g.state === 'ready' ? '<span class="pill next">ready to craft</span>' : g.state === 'have' ? '<span class="pill next">available, ready to place</span>' : '<span class="pill">material missing</span>';
     const body = g.state === 'have' ? ''
-      : g.raw ? `<div class="goal-need">This is a raw material: just gather it. Have ${fmt(g.have)} of ${fmt(g.need)}.</div>`
+      : g.raw ? `<div class="goal-need">${(p.stopItems || []).includes(g.id) ? 'Crafting is ignored for this: get it another way (e.g. trading).' : 'This is a raw material: just gather it.'} Have ${fmt(g.have)} of ${fmt(g.need)}.</div>`
       : `<div class="goal-need"><span class="lbl">You need in total</span>${raws || '<span class="sub2">only what you already have</span>'}</div>
          <details ${g.state === 'ready' ? 'open' : ''}><summary>${g.steps.length} crafting step${g.steps.length === 1 ? '' : 's'} in this order</summary><ol class="goal-steps">${steps}</ol></details>`;
     return `<div class="goal ${g.state}" data-id="${esc(g.id)}" data-need="${g.need}">
@@ -736,7 +749,7 @@ function renderRaw() {
       const id = n.id, own = st[id] || 0, done = n.missing === 0;
       return `<tr class="item ${done ? 'done' : ''}" data-id="${esc(id)}" data-need="${own + n.missing}">
         <td><input type="checkbox" class="chk" data-act="toggle" ${done ? 'checked' : ''} ${p.combo ? 'disabled' : ''}></td>
-        <td><div class="iname">${icon(id)}<span>${esc(MC.displayName(id))}</span>${(p.stopItems || []).includes(id) ? '<span class="pill raw">Raw material</span>' : ''}</div></td>
+        <td><div class="iname">${icon(id)}<span>${esc(MC.displayName(id))}</span>${(p.stopItems || []).includes(id) ? '<span class="pill raw" title="Not crafted: get it another way, e.g. trading">Ignored</span>' : ''}</div></td>
         <td class="num"><b>${fmt(n.need)}</b></td><td class="hide-m">${stackText(id, n.need)}</td>
         <td class="num">${haveCell(p, id, own)}${n.have > own ? `<div class="sub2">+ ${fmt(n.have - own)} matching in stock</div>` : ''}</td>
         <td class="num">${done ? '<span style="color:var(--accent)">✓</span>' : `${fmt(n.missing)}${n.missing >= MC.stackSize(id) ? `<div style="font-size:11px">${stackText(id, n.missing)}</div>` : ''}`}</td></tr>`;
