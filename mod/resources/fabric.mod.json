@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "materialliste",
+  "version": "2.0.0",
+  "name": "Materialliste",
+  "description": "Materiallisten für Bauprojekte als Webseite direkt aus dem Server: Litematica-Schematics, Sammelkisten, nächste Schritte, 3D-Ansicht. Auf dem Server (oder im Singleplayer) installieren; auf dem Client optional für den Litematica-Abgleich.",
+  "authors": ["Arkaizen"],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": { "main": ["materialliste.ServerMod"], "client": ["materialliste.sync.MaterialSync"] },
+  "depends": { "fabricloader": ">=0.19.0", "minecraft": ">=26.3 <26.4", "fabric-api": "*" },
+  "suggests": { "litematica": "*" },
+  "breaks": { "materialliste_sync": "*" }
+}

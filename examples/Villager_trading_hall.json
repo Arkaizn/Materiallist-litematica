@@ -1,0 +1,141 @@
+{
+  "name": "Unnamed",
+  "items": [
+    {
+      "id": "minecraft:comparator",
+      "count": 40
+    },
+    {
+      "id": "minecraft:poplar_trapdoor",
+      "count": 40
+    },
+    {
+      "id": "minecraft:redstone",
+      "count": 240
+    },
+    {
+      "id": "minecraft:deepslate_tiles",
+      "count": 905
+    },
+    {
+      "id": "minecraft:piston",
+      "count": 112
+    },
+    {
+      "id": "minecraft:string",
+      "count": 40
+    },
+    {
+      "id": "minecraft:chest",
+      "count": 80
+    },
+    {
+      "id": "minecraft:copper_bulb",
+      "count": 39
+    },
+    {
+      "id": "minecraft:powered_rail",
+      "count": 88
+    },
+    {
+      "id": "minecraft:deepslate_tile_slab",
+      "count": 127
+    },
+    {
+      "id": "minecraft:redstone_torch",
+      "count": 82
+    },
+    {
+      "id": "minecraft:poplar_shelf",
+      "count": 42
+    },
+    {
+      "id": "minecraft:mangrove_shelf",
+      "count": 42
+    },
+    {
+      "id": "minecraft:slime_block",
+      "count": 40
+    },
+    {
+      "id": "minecraft:obsidian",
+      "count": 40
+    },
+    {
+      "id": "minecraft:sticky_piston",
+      "count": 40
+    },
+    {
+      "id": "minecraft:soul_soil",
+      "count": 123
+    },
+    {
+      "id": "minecraft:stone_bricks",
+      "count": 336
+    },
+    {
+      "id": "minecraft:redstone_lamp",
+      "count": 40
+    },
+    {
+      "id": "minecraft:mangrove_slab",
+      "count": 42
+    },
+    {
+      "id": "minecraft:rail",
+      "count": 2
+    },
+    {
+      "id": "minecraft:lantern",
+      "count": 42
+    },
+    {
+      "id": "minecraft:repeater",
+      "count": 42
+    },
+    {
+      "id": "minecraft:mangrove_trapdoor",
+      "count": 41
+    },
+    {
+      "id": "minecraft:poplar_log",
+      "count": 210
+    },
+    {
+      "id": "minecraft:exposed_copper_bulb",
+      "count": 1
+    },
+    {
+      "id": "minecraft:poplar_sign",
+      "count": 40
+    },
+    {
+      "id": "minecraft:white_concrete",
+      "count": 2
+    },
+    {
+      "id": "minecraft:glass",
+      "count": 40
+    },
+    {
+      "id": "minecraft:mangrove_planks",
+      "count": 83
+    },
+    {
+      "id": "minecraft:tripwire_hook",
+      "count": 80
+    },
+    {
+      "id": "minecraft:lever",
+      "count": 40
+    },
+    {
+      "id": "minecraft:spruce_trapdoor",
+      "count": 40
+    },
+    {
+      "id": "minecraft:mangrove_stairs",
+      "count": 40
+    }
+  ]
+}

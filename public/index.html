@@ -1,0 +1,932 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Materialliste</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%235a8f3c'/><rect y='10' width='16' height='6' fill='%23795537'/></svg>">
+<style>
+:root{
+  --bg:#16181b; --panel:#1e2126; --panel2:#252930; --line:#30353d; --text:#e6e8eb; --muted:#9097a1;
+  --accent:#6fbf4a; --accent-d:#4f8f34; --warn:#e3a33b; --danger:#e05b52; --shulker:#a77ec9;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+button:hover{border-color:#4a515c}
+button.primary{background:var(--accent-d);border-color:var(--accent-d);color:#fff}
+button.primary:hover{background:var(--accent)}
+button.ghost{background:none;border-color:transparent;color:var(--muted)}
+button.ghost:hover{color:var(--text);border-color:var(--line)}
+button.danger:hover{border-color:var(--danger);color:var(--danger)}
+input[type=text],input[type=number],input[type=search],select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent-d);outline-offset:-1px}
+.app{display:grid;grid-template-columns:290px 1fr;height:100vh}
+aside{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.brand{padding:16px 16px 10px;display:flex;gap:10px;align-items:center}
+.brand .logo{width:28px;height:28px;border-radius:4px;background:linear-gradient(#6fbf4a 0 40%,#795537 40%);box-shadow:inset 0 0 0 2px rgba(0,0,0,.25)}
+.brand h1{font-size:16px;margin:0;letter-spacing:.2px}
+.brand small{color:var(--muted);display:block;font-size:12px}
+.drop{margin:6px 12px 10px;border:1.5px dashed var(--line);border-radius:10px;padding:14px;text-align:center;color:var(--muted);transition:.15s}
+.drop.over{border-color:var(--accent);background:rgba(111,191,74,.08);color:var(--text)}
+.drop b{color:var(--text)}
+.drop .row{display:flex;gap:6px;justify-content:center;margin-top:8px}
+.plist{overflow:auto;flex:1;padding:0 8px 12px}
+.plist h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:10px 8px 6px;display:flex;justify-content:space-between;align-items:center}
+.pitem{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center;padding:8px;border-radius:8px;cursor:pointer;border:1px solid transparent}
+.pitem:hover{background:var(--panel2)}
+.pitem.active{background:var(--panel2);border-color:var(--line)}
+.pitem .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.pitem .sub{font-size:12px;color:var(--muted);display:flex;gap:8px}
+.bar{height:4px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:4px}
+.bar>i{display:block;height:100%;background:var(--accent)}
+.empty-side{color:var(--muted);font-size:13px;padding:8px}
+main{overflow:auto;min-width:0}
+.top{position:sticky;top:0;z-index:5;background:rgba(22,24,27,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);padding:14px 24px 0}
+.titlebar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.titlebar input.title{font-size:20px;font-weight:650;background:none;border:1px solid transparent;padding:2px 6px;margin-left:-7px;min-width:200px;flex:1}
+.titlebar input.title:hover{border-color:var(--line)}
+.meta{color:var(--muted);font-size:12px;margin:2px 0 10px;display:flex;gap:14px;flex-wrap:wrap}
+.tabs{display:flex;gap:2px;overflow-x:auto}
+.tab{white-space:nowrap;background:none;border:none;border-bottom:2px solid transparent;border-radius:0;padding:8px 12px;color:var(--muted)}
+.tab.on{color:var(--text);border-bottom-color:var(--accent)}
+.content{padding:18px 24px 60px;max-width:1200px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.stat .k{color:var(--muted);font-size:12px}
+.stat .v{font-size:22px;font-weight:650;font-variant-numeric:tabular-nums}
+.stat .v small{font-size:13px;color:var(--muted);font-weight:400}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.toolbar input[type=search]{flex:1;min-width:180px}
+.toolbar label{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:13px;user-select:none}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;text-align:left;padding:8px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
+th.num,td.num{text-align:right}
+td{padding:7px 8px;border-bottom:1px solid #262a30;vertical-align:middle;font-variant-numeric:tabular-nums}
+tr.item:hover td{background:#1b1e22}
+tr.done td{opacity:.5}
+tr.done .iname{text-decoration:line-through}
+.cat td{background:var(--bg);color:var(--muted);font-size:12px;font-weight:600;padding-top:16px;border-bottom:1px solid var(--line)}
+.icon{width:22px;height:22px;border-radius:4px;display:inline-grid;place-items:center;font:700 9px/1 var(--mono);color:rgba(0,0,0,.65);box-shadow:inset 0 0 0 1px rgba(0,0,0,.3),inset 2px 2px 0 rgba(255,255,255,.18);flex:none}
+.icon.tex{width:28px;height:28px;background:none;box-shadow:none;border-radius:0;object-fit:contain}
+.icon.tex.flat{image-rendering:pixelated;padding:2px}
+.icon.tex.standin{opacity:.75}
+.iname{display:flex;align-items:center;gap:9px;min-width:0}
+.iname span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iname .id{color:var(--muted);font:11px var(--mono);margin-left:4px}
+.chk{width:18px;height:18px;accent-color:var(--accent);cursor:pointer}
+.st{color:var(--muted);font-size:13px;white-space:nowrap}
+.st b{color:var(--text);font-weight:600}
+.sb{color:var(--shulker);white-space:nowrap}
+.have{display:flex;gap:4px;align-items:center;justify-content:flex-end}
+.have input{width:78px;text-align:right;padding:4px 6px}
+.have button{padding:3px 7px;font-size:12px}
+.pill{font-size:11px;padding:2px 7px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.pill.raw{border-color:var(--warn);color:var(--warn)}
+.pill.next{border-color:var(--accent);color:var(--accent)}
+.pill.sync{border-color:var(--accent);color:var(--accent);margin-right:4px}
+.sub2{font-size:11.5px;color:var(--muted);font-weight:400}
+.sub2.rec{margin:2px 0 0 37px;white-space:normal}
+.sub2 .ok{color:var(--text)} .sub2 .no{color:var(--danger)}
+.chip{display:inline-block;font-size:12px;padding:2px 8px;border-radius:6px;border:1px solid var(--line);margin:2px 4px 2px 0}
+.chip.ok{border-color:var(--accent-d);color:var(--accent)} .chip.muted{color:var(--muted)} .chip.no{border-color:var(--danger);color:var(--danger)}
+.chip .icon{width:16px;height:16px;vertical-align:-3px;padding:0}
+.goal{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--line);border-radius:10px;padding:10px 14px;margin:8px 0}
+.goal.ready{border-left-color:var(--accent)} .goal.wait{border-left-color:var(--warn)}
+.goal-h{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.goal-need{margin:8px 0 2px 27px}
+.goal-need .lbl{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px}
+.goal details{margin:6px 0 0 27px;font-size:13px}
+.goal summary{cursor:pointer;color:var(--muted)}
+.goal-steps{margin:6px 0 2px;padding-left:22px}
+.goal-steps li{padding:2px 0}
+.refresh{display:inline-flex;align-items:center;gap:2px}
+.refresh select{padding:3px 6px;font-size:12px;color:var(--muted);background:none}
+.refresh #refreshBtn{font-size:16px;padding:2px 8px}
+.notice{background:var(--panel);border:1px solid var(--shulker);border-radius:10px;padding:10px 14px;margin-bottom:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.have .pin{padding:2px 5px;color:var(--warn)}
+.hero{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:14px 18px;margin-bottom:12px}
+.hero.gather{border-left-color:var(--warn)}
+.hero-k{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px}
+.hero-row{display:flex;gap:14px;align-items:center}
+.hero-row .icon{width:44px;height:44px}
+.hero-t{font-size:20px;font-weight:650}
+.hero-s{color:var(--muted);margin-top:2px}
+h3.sec{font-size:14px;margin:22px 0 4px}
+h3.sec small{color:var(--muted);font-weight:400;margin-left:6px}
+tr.nextup td{background:rgba(227,163,59,.07)}
+.donebox{margin-top:22px}
+.donebox summary{cursor:pointer;color:var(--muted);padding:6px 0}
+.expand{width:24px;padding:2px 0;font-size:11px}
+.tree{background:var(--panel);border-radius:8px;padding:10px 14px;margin:2px 0 8px;font-size:13px}
+.tree ul{list-style:none;margin:0;padding-left:20px;border-left:1px dashed var(--line)}
+.tree>ul{padding-left:0;border:none}
+.tree li{padding:3px 0}
+.tree .n{display:inline-flex;gap:7px;align-items:center}
+.tree .x{color:var(--muted);font-size:12px}
+.tree .cnt{font-weight:600;min-width:42px;display:inline-block;text-align:right}
+.note{color:var(--muted);font-size:12.5px;margin:8px 0 14px;max-width:780px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.card h2{font-size:15px;margin:0 0 10px}
+.steps li{margin:6px 0}
+.steps .rec{color:var(--muted);font-size:12.5px}
+.welcome{max-width:720px;margin:60px auto;padding:0 24px}
+.welcome h2{font-size:24px;margin-bottom:6px}
+.welcome ul{color:var(--muted)}
+.toast{position:fixed;bottom:18px;right:18px;background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--accent);padding:10px 14px;border-radius:8px;max-width:420px;box-shadow:0 8px 30px rgba(0,0,0,.4);z-index:50}
+.toast.err{border-left-color:var(--danger)}
+textarea{width:100%;min-height:200px;resize:vertical}
+.kbd{font:11px var(--mono);border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:var(--muted)}
+.combo-chk{accent-color:var(--shulker)}
+.content.wide{max-width:none}
+.v3d{position:relative;height:calc(100vh - 230px);min-height:380px;background:#131518;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.v3d canvas{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+.v3d canvas:active{cursor:grabbing}
+.v3d-msg{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);text-align:center;padding:20px}
+.v3d-ui{position:absolute;left:12px;top:12px;background:rgba(30,33,38,.9);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;width:250px;max-width:calc(100% - 24px);font-size:13px}
+.v3d-ui input[type=range]{width:100%;accent-color:var(--accent);padding:0}
+.v3d-ui .row{display:flex;gap:6px;align-items:center;justify-content:space-between}
+.v3d-ui label{display:flex;gap:6px;align-items:center;color:var(--muted);user-select:none}
+.v3d-ui button{padding:3px 8px;font-size:12px}
+.v3d-layer{max-height:190px;overflow:auto;border-top:1px solid var(--line);padding-top:6px;display:flex;flex-direction:column;gap:3px}
+.v3d-layer div{display:flex;align-items:center;gap:6px}
+.v3d-layer .icon.tex{width:20px;height:20px}
+.v3d-layer b{margin-left:auto;font-variant-numeric:tabular-nums}
+.v3d-help{position:absolute;right:12px;bottom:10px;color:var(--muted);font-size:12px;pointer-events:none;text-shadow:0 1px 2px #000}
+@media (max-width:860px){
+  .app{grid-template-columns:1fr;height:auto}
+  aside{max-height:none;border-right:none;border-bottom:1px solid var(--line)}
+  .plist{max-height:260px}
+  .grid2{grid-template-columns:1fr}
+  .hide-m{display:none}
+  .top,.content{padding-left:16px;padding-right:16px}
+}
+@media print{
+  aside,.tabs,.toolbar,.have button,.expand,.top button,.v3d,.refresh{display:none!important}
+  .app{display:block}
+  body{background:#fff;color:#000}
+  td,th{border-color:#ccc!important;color:#000!important}
+  .top{position:static;background:#fff}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="brand"><div class="logo"></div><div style="min-width:0;flex:1"><h1>Materialliste</h1><small id="who">Litematica &amp; JSON</small></div></div>
+    <div class="drop" id="drop">
+      <b>Dateien hierher ziehen</b><br>.litematic oder .json, mehrere gleichzeitig möglich
+      <div class="row">
+        <button class="primary" id="pick">Dateien wählen</button>
+        <button id="newEmpty" title="Leeres Projekt anlegen">+ Leer</button>
+      </div>
+      <input type="file" id="file" multiple accept=".litematic,.json" hidden>
+    </div>
+    <div class="plist" id="plist"></div>
+  </aside>
+  <main id="main"></main>
+</div>
+
+<script src="logic.js"></script>
+<script src="mcmodel.js"></script>
+<script src="render.js"></script>
+<script>
+'use strict';
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = (n) => Number(n).toLocaleString('de-CH');
+const SHULKER = 27;
+
+const S = {
+  me: null, projects: [], current: null, combo: new Set(), view: 'list', custom: {},
+  filter: '', hideDone: false, rawShowDone: false, refresh: 5, groupCat: true, sort: 'count', open: new Set(),
+};
+try { Object.assign(S, JSON.parse(localStorage.getItem('mcml-ui') || '{}'), { projects: [], current: null, open: new Set() }); S.combo = new Set(S.combo || []); } catch { S.combo = new Set(); }
+function saveUi() { try { localStorage.setItem('mcml-ui', JSON.stringify({ view: S.view, refresh: S.refresh, rawShowDone: S.rawShowDone, hideDone: S.hideDone, groupCat: S.groupCat, sort: S.sort, combo: [...S.combo], lastId: S.current && S.current.id })); } catch {} }
+
+async function api(path, opts) {
+  const r = await fetch('/api' + path, opts);
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401) showLogin();
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+// Nicht angemeldet: Die Anmeldung läuft über das Spiel, damit niemand einen fremden Namen benutzen kann
+function showLogin() {
+  S.me = null; S.current = null; S.projects = [];
+  $('#who').innerHTML = '';
+  $('#plist').innerHTML = '';
+  $('#drop').hidden = true;
+  $('#main').innerHTML = `<div class="welcome"><h2>Anmelden</h2>
+    <p style="color:var(--muted)">Die Anmeldung läuft über das Spiel:</p>
+    <ol style="line-height:1.9"><li>Geh auf den Minecraft-Server.</li><li>Gib im Chat <span class="kbd">/materialliste login</span> ein.</li><li>Klick auf den Link, der im Chat erscheint.</li></ol>
+    <p class="note">Der Link gilt 5 Minuten und nur für dich. Danach bleibst du in diesem Browser 30 Tage angemeldet.</p></div>`;
+}
+function toast(msg, err) {
+  const t = document.createElement('div');
+  t.className = 'toast' + (err ? ' err' : '');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), err ? 7000 : 3500);
+}
+
+/* ---------- Hilfsfunktionen für Anzeige ---------- */
+function icon(id) {
+  const ic = MC3D.iconFor(id);
+  if (ic) return `<img class="icon tex${ic.flat ? ' flat' : ''}${ic.standin ? ' standin' : ''}" src="${ic.url}" alt=""${ic.standin ? ' title="Platzhalter-Icon (unbekannte Holzart)"' : ''}>`;
+  const h = MC.hueOf(id);
+  const s = MC.short(id).replace(/^#/, '');
+  const ab = s.split('_').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+  return `<span class="icon"${ic === undefined ? ` data-icon="${esc(id)}"` : ''} style="background:hsl(${h} 45% 58%)">${esc(ab)}</span>`;
+}
+// Sobald Texturen und Modelle geladen sind, die Buchstaben-Platzhalter durch echte Icons ersetzen
+MCA.ready.then(() => document.querySelectorAll('[data-icon]').forEach((el) => { el.outerHTML = icon(el.dataset.icon); }));
+function stackText(id, n) {
+  if (n <= 0) return '<span class="st">–</span>';
+  const ss = MC.stackSize(id);
+  const st = Math.floor(n / ss), rest = n % ss;
+  if (st === 0) return `<span class="st"><b>${rest}</b></span>`;
+  return `<span class="st"><b>${st}</b> × ${ss}${rest ? ` + <b>${rest}</b>` : ''}</span>`;
+}
+function shulkerText(id, n) {
+  if (n <= 0) return '<span class="st">–</span>';
+  const slots = MC.slotsFor(id, n);
+  const sb = slots / SHULKER;
+  if (slots < SHULKER) return `<span class="st">${slots} Slots</span>`;
+  const full = Math.floor(sb), restSlots = slots - full * SHULKER;
+  return `<span class="sb">${full} SB${restSlots ? ` <span class="st">+ ${restSlots} Slots</span>` : ''}</span>`;
+}
+function totalsFor(items, n = (i) => i.count) {
+  let total = 0, slots = 0;
+  for (const i of items) { const c = n(i); if (c > 0) { total += c; slots += MC.slotsFor(i.id, c); } }
+  return { total, slots, shulkers: slots / SHULKER };
+}
+const resolveOpts = (p) => ({ custom: S.custom, stop: new Set(p.stopItems || []) });
+
+/* ---------- Sidebar ---------- */
+function renderSidebar() {
+  const el = $('#plist');
+  if (!S.projects.length) { el.innerHTML = '<h3>Projekte</h3><div class="empty-side">Noch keine Projekte. Lade eine Datei hoch.</div>'; return; }
+  const combos = S.projects.filter((p) => S.combo.has(p.id)).length;
+  el.innerHTML = `<h3><span>Projekte (${S.projects.length})</span>${combos >= 1 ? `<button class="ghost" id="openCombo" style="padding:2px 6px;font-size:11px;color:var(--shulker)">Kombiniert (${combos}) →</button>` : ''}</h3>` +
+    S.projects.map((p) => {
+      const pct = p.total ? Math.round((p.done / p.total) * 100) : 0;
+      const active = S.current && S.current.id === p.id && !S.current.combo;
+      return `<div class="pitem ${active ? 'active' : ''}" data-id="${p.id}">
+        <input type="checkbox" class="chk combo-chk" title="Für kombinierte Übersicht auswählen" data-combo="${p.id}" ${S.combo.has(p.id) ? 'checked' : ''}>
+        <div style="min-width:0"><div class="nm">${esc(p.name)}</div>
+          <div class="sub"><span>${p.types} Sorten</span><span>${fmt(p.total)} Items</span><span>${pct}%</span>${p.mine ? '' : `<span title="Mit dir geteilt">von ${esc(p.owner)}</span>`}</div>
+          <div class="bar"><i style="width:${pct}%"></i></div></div></div>`;
+    }).join('');
+}
+$('#plist').addEventListener('click', (e) => {
+  const cb = e.target.closest('[data-combo]');
+  if (cb) {
+    const id = cb.dataset.combo;
+    cb.checked ? S.combo.add(id) : S.combo.delete(id);
+    saveUi(); renderSidebar();
+    if (S.current && S.current.combo) openCombo();
+    return;
+  }
+  if (e.target.closest('#openCombo')) return openCombo();
+  const it = e.target.closest('.pitem');
+  if (it) openProject(it.dataset.id);
+});
+
+async function loadProjects() { S.projects = await api('/projects'); renderSidebar(); }
+
+/* ---------- Upload ---------- */
+async function uploadFiles(files) {
+  let last = null, ok = 0;
+  for (const f of files) {
+    try {
+      const r = await fetch('/api/upload?filename=' + encodeURIComponent(f.name), { method: 'POST', body: f });
+      const j = await r.json().catch(() => ({}));
+      if (r.status === 401) return showLogin();
+      if (!r.ok) throw new Error(j.error);
+      last = j.id; ok++;
+    } catch (e) { toast(e.message, true); }
+  }
+  if (ok) toast(`${ok} Projekt${ok > 1 ? 'e' : ''} importiert`);
+  await loadProjects();
+  if (last) openProject(last);
+}
+const drop = $('#drop');
+$('#pick').onclick = () => $('#file').click();
+$('#file').onchange = (e) => { uploadFiles([...e.target.files]); e.target.value = ''; };
+['dragenter', 'dragover'].forEach((ev) => document.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach((ev) => document.addEventListener(ev, (e) => { e.preventDefault(); if (ev === 'drop' || !e.relatedTarget) drop.classList.remove('over'); }));
+document.addEventListener('drop', (e) => { if (e.dataTransfer.files.length) uploadFiles([...e.dataTransfer.files]); });
+$('#newEmpty').onclick = async () => {
+  const p = await api('/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Neues Projekt', items: [] }) });
+  await loadProjects(); openProject(p.id); S.view = 'edit'; render();
+};
+
+/* ---------- Projekt laden / speichern ---------- */
+let saveTimer = null, saving = 0, pending = null;
+function persist(fields) {
+  const p = S.current;
+  if (!p || p.combo) return;
+  // mehrere Änderungen kurz hintereinander werden zusammen gespeichert
+  pending = Object.assign(pending || {}, fields || { _state: true });
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    const body = pending;
+    pending = null; saveTimer = null; saving++;
+    if (body._state) { delete body._state; body.stock = p.stock; body.stopItems = p.stopItems; }
+    try {
+      const sum = await api('/projects/' + p.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const i = S.projects.findIndex((x) => x.id === sum.id);
+      if (i >= 0) S.projects[i] = sum;
+      p.updated = sum.updated;   // eigene Änderung, kein Grund neu zu laden
+      renderSidebar();
+    } catch (e) { toast('Speichern fehlgeschlagen: ' + e.message, true); }
+    saving--;
+  }, 350);
+}
+async function openProject(id) {
+  try {
+    S.current = await api('/projects/' + id);
+    S.open.clear();
+    saveUi(); renderSidebar(); render();
+  } catch (e) { toast(e.message, true); }
+}
+async function openCombo() {
+  const ids = S.projects.filter((p) => S.combo.has(p.id)).map((p) => p.id);
+  if (!ids.length) return;
+  const full = await Promise.all(ids.map((id) => api('/projects/' + id)));
+  const items = MC.normalizeItems(full.flatMap((p) => p.items));
+  // Von Hand eingetragene Mengen addieren sich, der Bestand aus dem Spiel ist für alle Projekte derselbe
+  const stock = {}, fromGame = {}, placed = {};
+  full.forEach((p) => {
+    for (const k in p.stock) stock[k] = (stock[k] || 0) + p.stock[k];
+    const sy = p.sync || {};
+    for (const k in sy.stock || {}) if (!(k in p.stock)) fromGame[k] = Math.max(fromGame[k] || 0, sy.stock[k]);
+    for (const k in sy.placed || {}) placed[k] = (placed[k] || 0) + sy.placed[k];
+  });
+  for (const k in fromGame) stock[k] = (stock[k] || 0) + fromGame[k];
+  S.current = { combo: true, id: 'combo', name: 'Kombiniert: ' + full.map((p) => p.name).join(' + '), parts: full, items, stock, sync: { placed }, stopItems: [...new Set(full.flatMap((p) => p.stopItems || []))] };
+  if (S.view === 'edit') S.view = 'list';
+  S.open.clear();
+  renderSidebar(); render();
+}
+
+/* ---------- Render ---------- */
+const VIEWS = [['list', 'Checkliste'], ['next', 'Nächste Schritte'], ['raw', 'Grundmaterialien'], ['steps', 'Crafting-Schritte'], ['view3d', '3D-Ansicht'], ['edit', 'Bearbeiten & Export']];
+const has3dTab = (p) => !p.combo && (p.has3d || (p.source && p.source.type === 'litematic'));
+const viewOk = (p, k) => !(p.combo && k === 'edit') && (k !== 'view3d' || has3dTab(p));
+let viewer = null;
+function render() {
+  const m = $('#main');
+  const p = S.current;
+  if (viewer) { viewer.dispose(); viewer = null; }
+  if (!p) { m.innerHTML = welcome(); return; }
+  if (!viewOk(p, S.view)) S.view = 'list';
+  const src = p.combo ? `${p.parts.length} Projekte kombiniert` : sourceText(p);
+  m.innerHTML = `<div class="top">
+      <div class="titlebar">
+        ${p.combo ? `<h2 style="margin:0;font-size:20px;flex:1">${esc(p.name)}</h2>` : `<input class="title" id="title" value="${esc(p.name)}" aria-label="Projektname">`}
+        <span class="refresh" title="Wie oft neue Daten vom Server geholt werden (Sammelkisten, Baufortschritt, Mitspieler)">
+          <button class="ghost" id="refreshBtn" title="Jetzt aktualisieren">↻</button>
+          <select id="refreshSel" aria-label="Automatisch aktualisieren">${[[5, 'alle 5 s'], [10, 'alle 10 s'], [60, 'jede Minute'], [0, 'aus']].map(([v, l]) => `<option value="${v}" ${Number(S.refresh) === v ? 'selected' : ''}>${l}</option>`).join('')}</select></span>
+        <button class="ghost" onclick="window.print()" title="Drucken / als PDF speichern">Drucken</button>
+        ${p.combo || !p.mine ? '' : '<button class="ghost" id="shareBtn" title="Mit anderen Spielern teilen">Teilen</button><button class="ghost danger" id="del">Löschen</button>'}
+      </div>
+      <div class="meta">${src}</div>
+      <div class="tabs">${VIEWS.filter(([k]) => viewOk(p, k)).map(([k, l]) => `<button class="tab ${S.view === k ? 'on' : ''}" data-view="${k}">${l}</button>`).join('')}</div>
+    </div><div class="content${S.view === 'view3d' ? ' wide' : ''}" id="content"></div>`;
+  m.querySelectorAll('[data-view]').forEach((b) => b.onclick = () => { S.view = b.dataset.view; saveUi(); render(); });
+  const t = $('#title');
+  if (t) t.onchange = () => { p.name = t.value.trim() || p.name; persist({ name: p.name }); };
+  $('#refreshBtn').onclick = () => refreshNow(true);
+  $('#refreshSel').onchange = (e) => { S.refresh = Number(e.target.value); saveUi(); if (S.refresh) refreshNow(); };
+  const sb = $('#shareBtn');
+  if (sb) sb.onclick = () => { S.view = 'edit'; saveUi(); render(); const i = $('#shared'); if (i) { i.scrollIntoView({ block: 'center' }); i.focus(); } };
+  // Geteiltes Projekt und du hast dieselbe Schematic selbst: zusammenlegen anbieten
+  const twin = !p.combo && !p.mine && S.projects.find((x) => x.mine && x.id !== p.id && x.types === p.items.length && x.total === p.items.reduce((a, i) => a + i.count, 0));
+  if (twin) {
+    $('#content').insertAdjacentHTML('beforebegin', `<div class="notice" style="margin:14px 24px 0"><span>Du hast dieselbe Schematic als eigenes Projekt „${esc(twin.name)}“. Legt sie zusammen, dann sammelt ihr in einem gemeinsamen Projekt.</span><button class="primary" id="mergeBtn">Zusammenlegen</button></div>`);
+    $('#mergeBtn').onclick = async () => {
+      if (!confirm(`Dein Projekt „${twin.name}“ wird in das geteilte Projekt „${p.name}“ überführt: Deine Sammelkisten und eingetragenen Mengen wandern mit, dein eigenes Projekt wird danach gelöscht. Fortfahren?`)) return;
+      try { await api(`/projects/${p.id}/merge`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ from: twin.id }) }); S.combo.delete(twin.id); toast('Zusammengelegt'); await loadProjects(); openProject(p.id); }
+      catch (e) { toast(e.message, true); }
+    };
+  }
+  const d = $('#del');
+  if (d) d.onclick = async () => {
+    if (!confirm(`Projekt „${p.name}“ wirklich löschen?`)) return;
+    await api('/projects/' + p.id, { method: 'DELETE' });
+    S.combo.delete(p.id); S.current = null; saveUi(); await loadProjects(); render();
+  };
+  rerender();
+}
+function sourceText(p) {
+  const s = p.source || {};
+  const bits = [];
+  if (s.type === 'litematic') bits.push('Litematica-Schematic');
+  else if (s.type === 'json') bits.push('JSON-Import');
+  else bits.push('Manuell');
+  if (s.filename) bits.push(esc(s.filename));
+  const mt = s.meta || {};
+  if (mt.size) bits.push('Größe ' + esc(mt.size));
+  if (mt.author) bits.push('von ' + esc(mt.author));
+  if (mt.regions > 1) bits.push(esc(mt.regions) + ' Regionen');
+  bits.push('geändert ' + new Date(p.updated).toLocaleString('de-CH', { dateStyle: 'short', timeStyle: 'short' }));
+  return bits.map((b) => `<span>${b}</span>`).join('');
+}
+function welcome() {
+  return `<div class="welcome">
+    <h2>Materiallisten für deine Bauprojekte</h2>
+    <p style="color:var(--muted)">Zieh eine oder mehrere <span class="kbd">.litematic</span>- oder <span class="kbd">.json</span>-Dateien links hinein. Jede Datei wird zu einem eigenen Projekt.</p>
+    <ul>
+      <li>Checkliste mit Anzahl, Stacks und Shulkerboxen</li>
+      <li>Grundmaterialien: Piston → Planken, Bruchstein, Eisen, Redstone</li>
+      <li>Nächste Schritte: was du als Nächstes sammeln oder craften sollst, auf Wunsch per Mod mit dem Spiel synchronisiert</li>
+      <li>3D-Ansicht für .litematic-Dateien, Ebene für Ebene</li>
+      <li>Mehrere Projekte links anhaken → kombinierte Übersicht</li>
+    </ul></div>`;
+}
+
+/* ---------- Bestand ---------- */
+// Ein gemeinsamer Bestand je Projekt: Sync aus dem Spiel + von Hand eingetragene Werte (gehen vor).
+const stockOf = (p) => p._st || (p._st = MC.effStock(p));
+const planOf = (p) => p._plan || (p._plan = MC.plan(MC.demandOf(p), stockOf(p), resolveOpts(p)));
+function touch(p) { p._st = null; p._plan = null; }
+function setStock(p, id, v) {
+  v = Math.max(0, Math.round(v) || 0);
+  if (!p.sync && !v) delete p.stock[id]; else p.stock[id] = v;
+  touch(p); persist();
+}
+function haveCell(p, id, h) {
+  if (p.combo) return fmt(h);
+  const pinned = p.sync && id in p.stock;
+  return `<div class="have">${pinned ? `<button class="ghost pin" data-act="unpin" title="Von Hand eingetragen. Klicken, um wieder den Wert aus dem Spiel zu übernehmen (${fmt((p.sync.stock || {})[id] || 0)}).">✎</button>` : ''}
+    <input type="number" min="0" value="${h || ''}" placeholder="0" data-act="have" aria-label="Vorhanden">
+    <button data-act="stack" title="+1 Stack">+${MC.stackSize(id)}</button></div>`;
+}
+const ago = (t) => { const s = Math.max(0, Math.round((Date.now() - t) / 1000)); return s < 60 ? `vor ${s} s` : s < 3600 ? `vor ${Math.round(s / 60)} min` : s < 86400 ? `vor ${Math.round(s / 3600)} h` : new Date(t).toLocaleString('de-CH', { dateStyle: 'short', timeStyle: 'short' }); };
+function syncLine(p) {
+  if (p.combo) return '';
+  if (!p.sync) return `<p class="note">Noch keine Sammelkiste. Schau im Spiel eine Kiste an und gib <span class="kbd">/materialliste kiste ${esc(p.name)}</span> ein, dann wird ihr Inhalt automatisch gezählt. Bis dahin kannst du die Mengen von Hand eintragen.</p>`;
+  return `<p class="note"><span class="pill sync">Sync</span> Der Bestand kommt aus ${p.chests === 1 ? 'einer Sammelkiste' : fmt(p.chests || 0) + ' Sammelkisten'}${p.countInventory ? ' und den Inventaren der Mitglieder, die online sind' : ''}, zuletzt geändert ${ago(p.sync.time)}. Eigene Eingaben überschreiben den Wert aus dem Spiel, bis du auf ✎ klickst. <button class="ghost" id="unsync" style="padding:1px 6px;font-size:12px">Sync-Daten löschen</button></p>`;
+}
+function bindSync(p) {
+  const b = $('#unsync');
+  if (b) b.onclick = () => { if (confirm('Die aus dem Spiel übertragenen Mengen für dieses Projekt löschen?')) { delete p.sync; touch(p); persist({ clearSync: true }); rerender(); } };
+}
+const VIEW_FN = () => ({ list: renderList, next: renderNext, raw: renderRaw, steps: renderSteps, view3d: render3d, edit: renderEdit });
+function rerender() { (VIEW_FN()[S.view] || renderList)(); }
+
+/* ---------- Checkliste ---------- */
+function renderList() {
+  const p = S.current;
+  const c = $('#content');
+  const st = stockOf(p), pl = MC.placedOf(p);
+  const got = (i) => Math.min(i.count, (st[i.id] || 0) + (pl[i.id] || 0));
+  const tot = totalsFor(p.items);
+  const rem = totalsFor(p.items, (i) => i.count - got(i));
+  const doneTypes = p.items.filter((i) => got(i) >= i.count).length;
+  const placed = p.items.reduce((s, i) => s + Math.min(i.count, pl[i.id] || 0), 0);
+  const pct = tot.total ? Math.round(((tot.total - rem.total) / tot.total) * 100) : 0;
+  c.innerHTML = `
+    <div class="stats">
+      <div class="stat"><div class="k">Fortschritt</div><div class="v">${pct}% <small>${doneTypes}/${p.items.length} Sorten</small></div><div class="bar"><i style="width:${pct}%"></i></div></div>
+      <div class="stat"><div class="k">Items gesamt</div><div class="v">${fmt(tot.total)}${placed ? ` <small>${fmt(placed)} verbaut</small>` : ''}</div></div>
+      <div class="stat"><div class="k">Noch zu sammeln</div><div class="v">${fmt(rem.total)}</div></div>
+      <div class="stat"><div class="k">Inventar-Slots (offen)</div><div class="v">${fmt(rem.slots)} <small>von ${fmt(tot.slots)}</small></div></div>
+      <div class="stat"><div class="k">Shulkerboxen (offen)</div><div class="v" style="color:var(--shulker)">${Math.ceil(rem.shulkers)} <small>≈ ${rem.shulkers.toFixed(1)}</small></div></div>
+    </div>
+    <div class="toolbar">
+      <input type="search" id="q" placeholder="Item suchen…" value="${esc(S.filter)}">
+      <select id="sort"><option value="count">Nach Anzahl</option><option value="name">Nach Name</option><option value="remaining">Nach offen</option></select>
+      <label><input type="checkbox" class="chk" id="grp" ${S.groupCat ? 'checked' : ''}> Kategorien</label>
+      <label><input type="checkbox" class="chk" id="hd" ${S.hideDone ? 'checked' : ''}> Erledigte ausblenden</label>
+      ${p.combo ? '' : '<button id="resetAll" class="ghost">Zurücksetzen</button>'}
+    </div>
+    ${p.combo ? '<p class="note">Kombinierte Ansicht (nur lesen). Fortschritt kommt aus den einzelnen Projekten.</p>' : ''}
+    <table><thead><tr>
+      <th style="width:34px"></th><th>Item</th><th class="num">Benötigt</th><th class="hide-m">Stacks</th><th class="hide-m">Shulker</th>
+      <th class="num">Vorhanden</th><th class="num">Offen</th><th style="width:30px"></th></tr></thead>
+      <tbody id="tb"></tbody></table>`;
+  $('#sort').value = S.sort;
+  $('#q').oninput = (e) => { S.filter = e.target.value; drawRows(); };
+  $('#sort').onchange = (e) => { S.sort = e.target.value; saveUi(); drawRows(); };
+  $('#grp').onchange = (e) => { S.groupCat = e.target.checked; saveUi(); drawRows(); };
+  $('#hd').onchange = (e) => { S.hideDone = e.target.checked; saveUi(); drawRows(); };
+  const ra = $('#resetAll');
+  if (ra) ra.onclick = () => { if (confirm('Alle von Hand eingetragenen Mengen dieses Projekts löschen?')) { p.stock = {}; touch(p); persist(); renderList(); } };
+  drawRows();
+}
+function drawRows() {
+  const p = S.current;
+  const st = stockOf(p), pl = MC.placedOf(p);
+  const openOf = (i) => Math.max(0, i.count - (pl[i.id] || 0) - (st[i.id] || 0));
+  const q = S.filter.trim().toLowerCase();
+  let items = p.items.filter((i) => !q || i.id.includes(q.replace(/ /g, '_')) || MC.displayName(i.id).toLowerCase().includes(q));
+  if (S.hideDone) items = items.filter((i) => openOf(i) > 0);
+  const cmp = { count: (a, b) => b.count - a.count, name: (a, b) => MC.displayName(a.id).localeCompare(MC.displayName(b.id)), remaining: (a, b) => openOf(b) - openOf(a) }[S.sort];
+  items.sort(cmp);
+  let html = '';
+  const groups = S.groupCat ? MC.CATEGORY_NAMES.map((cat) => [cat, items.filter((i) => MC.categoryOf(i.id) === cat)]).filter((g) => g[1].length) : [[null, items]];
+  for (const [cat, list] of groups) {
+    if (cat) html += `<tr class="cat"><td colspan="8">${cat} · ${list.length}</td></tr>`;
+    for (const i of list) {
+      const h = st[i.id] || 0, built = Math.min(i.count, pl[i.id] || 0), open = openOf(i), done = open === 0;
+      const isStop = (p.stopItems || []).includes(i.id);
+      const canTree = MC.hasRecipe(i.id, { custom: S.custom });
+      html += `<tr class="item ${done ? 'done' : ''}" data-id="${esc(i.id)}" data-need="${i.count - built}">
+        <td><input type="checkbox" class="chk" data-act="toggle" ${done ? 'checked' : ''} ${p.combo ? 'disabled' : ''} aria-label="Erledigt"></td>
+        <td><div class="iname">${icon(i.id)}<span>${esc(MC.displayName(i.id))}</span>${isStop ? '<span class="pill raw" title="Wird nicht weiter zerlegt">Rohstoff</span>' : ''}</div></td>
+        <td class="num"><b>${fmt(i.count)}</b>${built ? `<div class="sub2">${fmt(built)} verbaut</div>` : ''}</td>
+        <td class="hide-m">${stackText(i.id, i.count)}</td>
+        <td class="hide-m">${shulkerText(i.id, i.count)}</td>
+        <td class="num">${haveCell(p, i.id, h)}</td>
+        <td class="num">${done ? '<span style="color:var(--accent)">✓</span>' : `${fmt(open)}${open >= MC.stackSize(i.id) ? `<div style="font-size:11px">${stackText(i.id, open)}</div>` : ''}`}</td>
+        <td>${canTree ? `<button class="ghost expand" data-act="tree" title="Zerlegen">${S.open.has(i.id) ? '▾' : '▸'}</button>` : ''}</td></tr>`;
+      if (S.open.has(i.id)) html += `<tr><td></td><td colspan="7">${treeHtml(i.id, i.count, p)}</td></tr>`;
+    }
+  }
+  if (!items.length) html = `<tr><td colspan="8" style="color:var(--muted);padding:24px;text-align:center">${p.items.length ? 'Keine Treffer' : 'Keine Items – unter „Bearbeiten“ hinzufügen.'}</td></tr>`;
+  $('#tb').innerHTML = html;
+}
+function treeHtml(id, count, p) {
+  const t = MC.tree(id, count, resolveOpts(p));
+  const node = (n, root) => {
+    const kids = n.children.length ? `<ul>${n.children.map((k) => node(k)).join('')}</ul>` : '';
+    const info = n.crafts ? `<span class="x">${n.crafts}× ${n.via ? esc(n.via) : 'craften'}${n.produced > n.count ? ` · ${n.produced - n.count} übrig` : ''}</span>` : (root ? '' : '<span class="pill">Basis</span>');
+    return `<li><span class="n"><span class="cnt">${fmt(n.count)}</span>${icon(n.id)}${esc(MC.displayName(n.id))} ${info}</span>${kids}</li>`;
+  };
+  const stop = (p.stopItems || []).includes(id);
+  return `<div class="tree"><ul>${node(t, true)}</ul>
+    ${p.combo ? '' : `<div style="margin-top:8px"><label style="color:var(--muted);font-size:12.5px;display:inline-flex;gap:6px;align-items:center"><input type="checkbox" class="chk" data-act="stop" data-item="${esc(id)}" ${stop ? 'checked' : ''}> In der Grundmaterial-Ansicht nicht zerlegen (als Rohstoff behandeln)</label></div>`}</div>`;
+}
+// Alle Zeilen mit data-id (Checkliste, Nächste Schritte, Grundmaterialien) teilen sich diese Aktionen
+document.addEventListener('change', (e) => {
+  const p = S.current;
+  if (!p || p.combo) return;
+  const act = e.target.dataset.act;
+  if (act === 'stop') {
+    const id = e.target.dataset.item;
+    const set = new Set(p.stopItems || []);
+    e.target.checked ? set.add(id) : set.delete(id);
+    p.stopItems = [...set]; touch(p); persist();
+    return rerender();
+  }
+  const row = e.target.closest('[data-id]');
+  if (!row) return;
+  const id = row.dataset.id;
+  if (act === 'toggle') { setStock(p, id, e.target.checked ? Math.max(p.stock[id] || 0, Number(row.dataset.need) || 0) : 0); rerender(); }
+  if (act === 'have') { setStock(p, id, parseInt(e.target.value, 10)); rerender(); }
+});
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-act]');
+  if (!b || !S.current) return;
+  const p = S.current;
+  const row = b.closest('[data-id]');
+  if (!row) return;
+  const id = row.dataset.id, act = b.dataset.act;
+  if (act === 'tree') { S.open.has(id) ? S.open.delete(id) : S.open.add(id); drawRows(); }
+  if (p.combo) return;
+  if (act === 'stack') { setStock(p, id, (p.stock[id] != null ? p.stock[id] : stockOf(p)[id] || 0) + MC.stackSize(id)); rerender(); }
+  if (act === 'unpin') { delete p.stock[id]; touch(p); persist(); rerender(); }
+  if (act === 'craft') { doCraft(p, id); rerender(); }
+});
+
+/* ---------- Nächste Schritte ---------- */
+// Ein Plan verbraucht Bestand: abziehen, was er benutzt, und gutschreiben, was beim Craften übrig bleibt bzw. entsteht
+function applyPlan(pool, pl, rootId, credit = true) {
+  for (const id in pl.nodes) {
+    const n = pl.nodes[id], fromTag = pl.tagFrom[id] || {};
+    let own = n.used;
+    for (const k in fromTag) { own -= fromTag[k]; pool[k] = (pool[k] || 0) - fromTag[k]; }
+    if (own) pool[id] = (pool[id] || 0) - own;
+    const gain = id === rootId ? n.produced + n.used : n.produced - n.missing;
+    if (credit && n.crafts && gain) pool[id] = (pool[id] || 0) + gain;
+  }
+}
+/**
+ * Ein Ziel pro Endprodukt: was dafür insgesamt an Rohstoffen nötig ist und welche Crafting-Schritte in welcher Reihenfolge.
+ * Der Bestand wird der Reihe nach verteilt: zuerst an alles, was damit komplett fertig wird.
+ */
+function goalsOf(p) {
+  const st = stockOf(p), dem = MC.demandOf(p), opts = resolveOpts(p);
+  const pool = Object.assign({}, st);
+  const goals = [];
+  const todo = p.items.filter((i) => dem[i.id] > 0).map((i) => ({ id: i.id, count: i.count, need: dem[i.id] }));
+  const make = (g, ready) => {
+    const pl = MC.plan({ [g.id]: g.need }, pool, opts), N = pl.nodes;
+    if (ready && pl.gather.length) return false;
+    g.plan = pl;
+    g.have = N[g.id].used;
+    g.left = g.need - g.have;                       // so viele müssen noch entstehen
+    g.raws = Object.values(N).filter((n) => !n.recipe && n.need > 0 && n.id !== g.id).sort((a, b) => b.need - a.need);
+    g.steps = Object.values(N).filter((n) => n.crafts > 0).sort((a, b) => a.depth - b.depth);
+    g.raw = !N[g.id].recipe;                        // Endprodukt ist selbst ein Rohstoff
+    g.state = g.left === 0 ? 'have' : pl.gather.length ? 'wait' : 'ready';
+    // Fehlt noch Material, wird nur verbraucht, nichts gutgeschrieben: Was noch nicht gecraftet werden kann, steht anderen Zielen nicht zur Verfügung
+    applyPlan(pool, pl, g.id, g.state !== 'wait');
+    if (g.state !== 'wait') pool[g.id] = (pool[g.id] || 0) - g.need;   // die fertigen Stücke sind für den Bau reserviert, nicht als Zutat für anderes
+    goals.push(g);
+    return true;
+  };
+  const rest = todo.filter((g) => !make(g, true));
+  rest.forEach((g) => make(g, false));
+  return goals;
+}
+// Von Hand buchen: ganze Kette eines Ziels craften (Zutaten abziehen, Ergebnis und Reste gutschreiben)
+function doCraft(p, id) {
+  const need = MC.demandOf(p)[id];
+  if (!need) return;
+  const st = stockOf(p), pl = MC.plan({ [id]: need }, st, resolveOpts(p));
+  if (pl.gather.length) return toast('Dafür fehlt noch Material', true);
+  const after = Object.assign({}, st);
+  applyPlan(after, pl, id);
+  for (const k in after) if ((after[k] || 0) !== (st[k] || 0)) p.stock[k] = Math.max(0, after[k]);
+  touch(p); persist();
+  toast(`${fmt(pl.nodes[id].produced)}× ${MC.displayName(id)} gebucht`);
+}
+function renderNext() {
+  const p = S.current, pl = planOf(p), N = pl.nodes, st = stockOf(p);
+  const goals = goalsOf(p);
+  const own = (id) => st[id] || 0;
+  const amount = (id, n) => `${fmt(n)}${n >= MC.stackSize(id) ? ` <span class="sub2" style="display:inline">(${stackText(id, n).replace(/<\/?span[^>]*>/g, '')})</span>` : ''}`;
+  const ready = goals.filter((g) => g.state === 'ready'), wait = goals.filter((g) => g.state === 'wait'), have = goals.filter((g) => g.state === 'have');
+  const left = Object.values(MC.demandOf(p)).reduce((a, b) => a + b, 0);
+
+  // Oben: genau ein Schritt
+  let hero, heroId = null, heroCls = 'craft';
+  if (ready.length) { const g = ready[0]; heroId = g.id; hero = `<div class="hero-t">Craften: ${fmt(g.left)}× ${esc(MC.displayName(g.id))}</div><div class="hero-s">Du hast alles Material dafür${ready.length > 1 ? `, genauso für ${ready.length - 1} weitere (siehe unten)` : ''}.</div>`; }
+  else if (pl.gather.length) { const id = pl.gather[0]; heroId = id; heroCls = 'gather'; hero = `<div class="hero-t">Sammeln: ${esc(MC.displayName(id))}</div><div class="hero-s">Noch ${amount(id, N[id].missing)} · vorhanden ${fmt(N[id].have)} von ${fmt(N[id].need)}</div>`; }
+  else if (left) hero = `<div class="hero-t">Alle Materialien sind da – jetzt bauen</div><div class="hero-s">Noch ${fmt(left)} Blöcke zu setzen.</div>`;
+  else hero = '<div class="hero-t">Fertig 🎉</div><div class="hero-s">Alles ist verbaut.</div>';
+
+  const chk = (id, done) => (p.combo ? '' : `<input type="checkbox" class="chk" data-act="toggle" ${done ? 'checked' : ''} title="${done ? 'Doch nicht vorhanden' : 'Habe ich schon (ohne Zutaten abzuziehen)'}">`);
+  // Eine Karte je Endprodukt: was du insgesamt brauchst und wie du es craftest
+  const card = (g) => {
+    const raws = g.raws.map((n) => `<span class="chip ${n.missing ? 'no' : 'ok'}">${icon(n.id)} ${fmt(n.need)} ${esc(MC.displayName(n.id))}${n.missing ? ` · fehlt ${fmt(n.missing)}` : ' ✓'}</span>`).join('');
+    const steps = g.steps.map((n) => `<li><b>${fmt(n.produced)}× ${esc(MC.displayName(n.id))}</b> <span class="sub2" style="display:inline">${esc(n.recipe.via || 'craften')} aus ${Object.entries(n.recipe.in).map(([k, v]) => `${fmt(v * n.crafts)} ${esc(MC.displayName(k))}`).join(', ')}</span></li>`).join('');
+    const status = g.state === 'ready' ? '<span class="pill next">bereit zum Craften</span>' : g.state === 'have' ? '<span class="pill next">vorhanden, bereit zum Verbauen</span>' : '<span class="pill">Material fehlt</span>';
+    const body = g.state === 'have' ? ''
+      : g.raw ? `<div class="goal-need">Das ist ein Rohstoff: einfach sammeln. Vorhanden ${fmt(g.have)} von ${fmt(g.need)}.</div>`
+      : `<div class="goal-need"><span class="lbl">Du brauchst insgesamt</span>${raws || '<span class="sub2">nur, was schon vorhanden ist</span>'}</div>
+         <details ${g.state === 'ready' ? 'open' : ''}><summary>${g.steps.length} Crafting-Schritt${g.steps.length === 1 ? '' : 'e'} in dieser Reihenfolge</summary><ol class="goal-steps">${steps}</ol></details>`;
+    return `<div class="goal ${g.state}" data-id="${esc(g.id)}" data-need="${g.need}">
+      <div class="goal-h">${chk(g.id, g.state === 'have')}${icon(g.id)}<b>${fmt(g.state === 'have' ? g.need : g.left)}× ${esc(MC.displayName(g.id))}</b>${g.have && g.left ? `<span class="sub2">${fmt(g.have)} von ${fmt(g.need)} schon vorhanden</span>` : ''}${status}
+        ${g.state === 'ready' && !p.combo && !p.sync ? '<button class="primary" data-act="craft" style="margin-left:auto" title="Zutaten abziehen und Ergebnis gutschreiben">Gecraftet</button>' : ''}</div>${body}</div>`;
+  };
+  const rawRow = (id, i) => {
+    const nd = N[id], done = nd.missing === 0, next = !done && i === 0 && heroCls === 'gather';
+    const uses = goals.filter((g) => g.plan.nodes[id] && g.plan.nodes[id].need > 0 && g.id !== id).map((g) => esc(MC.displayName(g.id)));
+    return `<tr class="item ${done ? 'done' : ''}${next ? ' nextup' : ''}" data-id="${esc(id)}" data-need="${own(id) + nd.missing}">
+      <td style="width:34px">${chk(id, done)}</td>
+      <td><div class="iname">${icon(id)}<span>${esc(MC.displayName(id))}</span>${next ? '<span class="pill next">als Nächstes</span>' : ''}</div>${uses.length && !done ? `<div class="sub2 rec">Für: ${uses.slice(0, 6).join(', ')}${uses.length > 6 ? ' …' : ''}${nd.final ? ' · und direkt zum Verbauen' : ''}</div>` : ''}</td>
+      <td class="num"><b>${fmt(nd.need)}</b></td>
+      <td class="num">${haveCell(p, id, own(id))}${nd.have > own(id) ? `<div class="sub2">+ ${fmt(nd.have - own(id))} passend im Bestand</div>` : ''}</td>
+      <td class="num" style="width:120px">${done ? '<span style="color:var(--accent)">✓</span>' : amount(id, nd.missing)}</td></tr>`;
+  };
+  const doneRaw = pl.done.filter((id) => !N[id].recipe);
+  const sec = (title, hint, html) => (html ? `<h3 class="sec">${title} <small>${hint}</small></h3>${html}` : '');
+  $('#content').innerHTML = `
+    <div class="hero ${heroCls}"><div class="hero-k">Nächster Schritt</div><div class="hero-row">${heroId ? icon(heroId) : ''}<div>${hero}</div></div></div>
+    ${syncLine(p)}
+    ${sec('Jetzt craften', 'Für diese Endprodukte ist alles Material da', ready.map(card).join(''))}
+    ${sec('Sammeln', `${pl.gather.length} Rohstoffe fehlen noch, zusammengezählt für alles`, pl.gather.length ? `<table><thead><tr><th></th><th>Rohstoff</th><th class="num">Bedarf</th><th class="num">Vorhanden</th><th class="num">Fehlt</th></tr></thead><tbody>${pl.gather.map(rawRow).join('')}</tbody></table>` : '')}
+    ${sec('Danach craften', 'Hier fehlt noch Material (rot)', wait.map(card).join(''))}
+    ${have.length || doneRaw.length ? `<details class="donebox"><summary>Erledigt (${have.length} Endprodukte bereit zum Verbauen, ${doneRaw.length} Rohstoffe komplett)</summary>${have.map(card).join('')}${doneRaw.length ? `<table><tbody>${doneRaw.map(rawRow).join('')}</tbody></table>` : ''}</details>` : ''}
+    <p class="note" style="margin-top:18px">Jede Karte ist ein Endprodukt aus deiner Liste, mit allem, was du dafür insgesamt brauchst, und den Crafting-Schritten bis dorthin. Zwischenprodukte (Sticks, Planken, Fackeln …) tauchen nur dort als Schritt auf. Der Haken bedeutet „habe ich schon“. „Gecraftet“ zieht die Zutaten der ganzen Kette ab und schreibt das Ergebnis gut.</p>`;
+  bindSync(p);
+}
+
+/* ---------- Grundmaterialien ---------- */
+function renderRaw() {
+  const p = S.current, pl = planOf(p), N = pl.nodes, st = stockOf(p);
+  const all = Object.values(N).filter((n) => !n.recipe && n.need > 0).sort((a, b) => b.need - a.need);
+  const raws = all.filter((n) => S.rawShowDone || n.missing > 0);
+  const tot = totalsFor(all, (n) => n.need);
+  const rem = totalsFor(all, (n) => n.missing);
+  const hidden = all.length - raws.length;
+  const c = $('#content');
+  c.innerHTML = `
+    <div class="stats">
+      <div class="stat"><div class="k">Grundmaterial-Sorten</div><div class="v">${all.length} <small>${all.length - all.filter((n) => n.missing > 0).length} erledigt</small></div></div>
+      <div class="stat"><div class="k">Bedarf gesamt</div><div class="v">${fmt(tot.total)}</div></div>
+      <div class="stat"><div class="k">Noch offen</div><div class="v">${fmt(rem.total)}</div></div>
+      <div class="stat"><div class="k">Inventar-Slots (offen)</div><div class="v">${fmt(rem.slots)}</div></div>
+      <div class="stat"><div class="k">Shulkerboxen (offen)</div><div class="v" style="color:var(--shulker)">${Math.ceil(rem.shulkers)} <small>≈ ${rem.shulkers.toFixed(1)}</small></div></div>
+    </div>
+    <div class="toolbar">
+      <label><input type="checkbox" class="chk" id="rsd" ${S.rawShowDone ? 'checked' : ''}> Erledigte anzeigen${hidden ? ` (${hidden})` : ''}</label>
+      <button class="ghost" id="rawCsv">CSV exportieren</button>
+    </div>
+    <p class="note">Was für alles, das noch fehlt, an Rohstoffen gebraucht wird (z.B. Piston → Planken → Stämme, Bruchstein, Eisenbarren, Redstone). Was du in der Checkliste abhakst, schon gecraftet oder verbaut hast, ist hier bereits abgezogen. Gerundet wird erst nach dem Zusammenzählen je Zwischenprodukt. „Beliebige Planken/Stämme“ heisst: die Holzart ist egal. Über ▸ in der Checkliste kannst du ein Item als Rohstoff markieren.</p>
+    <table><thead><tr><th style="width:34px"></th><th>Grundmaterial</th><th class="num">Bedarf</th><th class="hide-m">Stacks</th><th class="num">Vorhanden</th><th class="num">Offen</th></tr></thead>
+    <tbody>${raws.map((n) => {
+      const id = n.id, own = st[id] || 0, done = n.missing === 0;
+      return `<tr class="item ${done ? 'done' : ''}" data-id="${esc(id)}" data-need="${own + n.missing}">
+        <td><input type="checkbox" class="chk" data-act="toggle" ${done ? 'checked' : ''} ${p.combo ? 'disabled' : ''}></td>
+        <td><div class="iname">${icon(id)}<span>${esc(MC.displayName(id))}</span>${(p.stopItems || []).includes(id) ? '<span class="pill raw">Rohstoff</span>' : ''}</div></td>
+        <td class="num"><b>${fmt(n.need)}</b></td><td class="hide-m">${stackText(id, n.need)}</td>
+        <td class="num">${haveCell(p, id, own)}${n.have > own ? `<div class="sub2">+ ${fmt(n.have - own)} passend im Bestand</div>` : ''}</td>
+        <td class="num">${done ? '<span style="color:var(--accent)">✓</span>' : `${fmt(n.missing)}${n.missing >= MC.stackSize(id) ? `<div style="font-size:11px">${stackText(id, n.missing)}</div>` : ''}`}</td></tr>`;
+    }).join('') || '<tr><td colspan="6" style="color:var(--muted);padding:24px;text-align:center">Nichts mehr zu sammeln 🎉</td></tr>'}</tbody></table>`;
+  $('#rsd').onchange = (e) => { S.rawShowDone = e.target.checked; saveUi(); renderRaw(); };
+  $('#rawCsv').onclick = () => download(`${p.name}-grundmaterialien.csv`, toCsv(all.map((n) => ({ id: n.id, count: n.need })), st), 'text/csv');
+}
+
+/* ---------- Crafting-Schritte ---------- */
+function renderSteps() {
+  const p = S.current;
+  const steps = Object.values(planOf(p).nodes).filter((n) => n.crafts > 0).sort((a, b) => a.depth - b.depth);
+  const finals = new Set(p.items.map((i) => i.id));
+  $('#content').innerHTML = `
+    <p class="note">Gesamtübersicht für alles, was noch fehlt: zuerst Zwischenprodukte (Planken, Sticks, Steinziegel …), dann die fertigen Blöcke. „Übrig“ zeigt Überschuss durch Rezept-Mengen. Was als Nächstes dran ist, steht im Tab „Nächste Schritte“.</p>
+    <div class="grid2">
+      <div class="card"><h2>Zwischenprodukte</h2><ol class="steps">${stepList(steps.filter((n) => !finals.has(n.id)))}</ol></div>
+      <div class="card"><h2>Endprodukte (in der Liste)</h2><ol class="steps">${stepList(steps.filter((n) => finals.has(n.id)))}</ol></div>
+    </div>`;
+}
+function stepList(steps) {
+  if (!steps.length) return '<li style="color:var(--muted);list-style:none">–</li>';
+  return steps.map((s) => {
+    const ins = Object.entries(s.recipe.in).map(([k, v]) => `${fmt(v * s.crafts)} ${esc(MC.displayName(k))}`).join(', ');
+    const surplus = s.produced - s.missing;
+    return `<li><div class="iname" style="display:inline-flex">${icon(s.id)}<b>${fmt(s.produced)} ${esc(MC.displayName(s.id))}</b></div>
+      <div class="rec">${s.crafts}× ${s.recipe.via ? esc(s.recipe.via) : 'craften'} aus ${ins}${surplus ? ` · <span style="color:var(--warn)">${surplus} übrig</span>` : ''}</div></li>`;
+  }).join('');
+}
+
+/* ---------- 3D-Ansicht ---------- */
+async function render3d() {
+  const p = S.current, c = $('#content');
+  if (!p.has3d) {
+    c.innerHTML = `<div class="card" style="max-width:640px"><h2>3D-Ansicht</h2>
+      <p class="note" style="margin-top:0">Für dieses Projekt ist die .litematic-Datei noch nicht gespeichert (es wurde vor dieser Funktion importiert). Wähle die Datei noch einmal aus. Deine Liste und dein Fortschritt bleiben unverändert.</p>
+      <button class="primary" id="addSchem">.litematic auswählen</button><input type="file" id="schemFile" accept=".litematic" hidden></div>`;
+    $('#addSchem').onclick = () => $('#schemFile').click();
+    $('#schemFile').onchange = async (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+      try { await api(`/projects/${p.id}/schematic`, { method: 'POST', body: f }); p.has3d = true; if (S.current === p && S.view === 'view3d') render3d(); }
+      catch (err) { toast(err.message, true); }
+    };
+    return;
+  }
+  c.innerHTML = `<div class="v3d" id="v3d"><div class="v3d-msg" id="v3dMsg">Lade 3D-Ansicht …</div></div>`;
+  const still = () => S.current === p && S.view === 'view3d' && $('#v3d');
+  try {
+    const [vox] = await Promise.all([api(`/projects/${p.id}/voxels`), MCA.ready]);
+    await new Promise((r) => setTimeout(r, 0));
+    if (!still()) return;
+    const host = $('#v3d');
+    host.insertAdjacentHTML('beforeend', `<div class="v3d-ui">
+        <div class="row"><b id="v3dLabel" style="white-space:nowrap"></b><button id="v3dReset" title="Kamera zurücksetzen" style="white-space:nowrap">Zurücksetzen</button></div>
+        <input type="range" id="v3dY" min="1" step="1" aria-label="Ebene">
+        <div class="row"><label><input type="checkbox" class="chk" id="v3dSingle"> Nur diese Ebene</label>
+          <span><button id="v3dDown" title="Eine Ebene tiefer">−</button> <button id="v3dUp" title="Eine Ebene höher">+</button></span></div>
+        <div class="v3d-layer" id="v3dLayer"></div>
+      </div><div class="v3d-help">Ziehen: drehen · Rechtsklick/Shift+Ziehen: verschieben · Mausrad: zoomen</div>`);
+    const slider = $('#v3dY'), single = $('#v3dSingle');
+    viewer = new MC3D.Viewer(host, vox, (info) => {
+      $('#v3dLabel').textContent = `Ebene ${info.yMax + 1} / ${info.layers}`;
+      $('#v3dLayer').innerHTML = `<div style="color:var(--muted)">${single.checked ? 'In dieser Ebene' : 'Oberste sichtbare Ebene'} · ${fmt(info.shown)} Blöcke sichtbar</div>` +
+        info.top.map(([name, n]) => `<div>${icon(name)}<span>${esc(MC.displayName(name))}</span><b>${fmt(n)}</b></div>`).join('');
+    });
+    $('#v3dMsg').remove();
+    const layers = viewer.size[1];
+    slider.max = layers; slider.value = layers;
+    const apply = () => { const y = +slider.value - 1; viewer.setLayers(single.checked ? y : 0, y); };
+    slider.oninput = apply; single.onchange = apply;
+    $('#v3dDown').onclick = () => { slider.value = Math.max(1, +slider.value - 1); apply(); };
+    $('#v3dUp').onclick = () => { slider.value = Math.min(layers, +slider.value + 1); apply(); };
+    $('#v3dReset').onclick = () => viewer.resetView();
+    if (!MCA.ok) toast('Texturen konnten nicht geladen werden. Die Blöcke werden einfarbig angezeigt.', true);
+  } catch (e) {
+    if (still()) $('#v3d').innerHTML = `<div class="v3d-msg">3D-Ansicht nicht möglich: ${esc(e.message)}</div>`;
+  }
+}
+
+/* ---------- Bearbeiten & Export ---------- */
+function renderEdit() {
+  const p = S.current;
+  const text = p.items.map((i) => `${i.id} ${i.count}`).join('\n');
+  $('#content').innerHTML = `<div class="grid2">
+    <div class="card"><h2>Items bearbeiten</h2>
+      <p class="note" style="margin-top:0">Eine Zeile pro Item: <span class="kbd">id anzahl</span>, z.B. <span class="kbd">stone_bricks 336</span>. Das Präfix <span class="kbd">minecraft:</span> ist optional. Gesammelte Mengen bleiben erhalten.</p>
+      <textarea id="ed" spellcheck="false" style="font-family:var(--mono);min-height:340px">${esc(text)}</textarea>
+      <div style="display:flex;gap:8px;margin-top:8px"><button class="primary" id="saveEd">Übernehmen</button></div></div>
+    <div class="card"><h2>Export</h2>
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start">
+        <button id="exJson">Materialliste als JSON</button>
+        <button id="exCsv">Checkliste als CSV (Excel)</button>
+        <button id="exTxt">Einkaufsliste als Text (für Discord/Notizen)</button>
+        ${p.has3d ? `<a href="/api/projects/${p.id}/schematic" download><button type="button">Schematic herunterladen (.litematic)</button></a>` : ''}
+      </div>
+      <h2 style="margin-top:20px">Notizen</h2>
+      <textarea id="notes" placeholder="Koordinaten, Lager-Standort, Helfer …">${esc(p.notes || '')}</textarea></div>
+    <div class="card"><h2>Teilen</h2>
+      ${p.mine ? `<p class="note" style="margin-top:0">Diese Spieler sehen das Projekt, können Mengen eintragen, Sammelkisten setzen und die Schematic herunterladen. Löschen und Teilen kannst nur du. Spielernamen mit Komma trennen.</p>
+        <input type="text" id="shared" style="width:100%" placeholder="z.B. Steve, Alex" value="${esc((p.shared || []).join(', '))}">
+        <label style="display:flex;gap:6px;align-items:center;margin:10px 0;color:var(--muted)"><input type="checkbox" class="chk" id="inv" ${p.countInventory ? 'checked' : ''}> Inventare der Mitglieder mitzählen, solange sie online sind</label>
+        <button class="primary" id="saveShare">Speichern</button>`
+      : `<p class="note" style="margin-top:0">Dieses Projekt gehört ${esc((p.owner || {}).name || '?')} und ist mit dir geteilt.</p>`}</div></div>`;
+  const ss = $('#saveShare');
+  if (ss) ss.onclick = () => {
+    p.shared = $('#shared').value.split(/[,\s]+/).map((n) => n.trim().toLowerCase()).filter(Boolean);
+    p.countInventory = $('#inv').checked;
+    persist({ shared: p.shared, countInventory: p.countInventory }); toast('Gespeichert');
+  };
+  $('#saveEd').onclick = () => {
+    const items = [], bad = [];
+    $('#ed').value.split('\n').forEach((line, n) => {
+      const l = line.trim(); if (!l || l.startsWith('#')) return;
+      const m = l.match(/^([a-z0-9_:.\-]+)[\s,;:x×]+(\d+)$/i) || l.match(/^(\d+)\s*[x×]?\s+([a-z0-9_:.\-]+)$/i);
+      if (!m) { bad.push(n + 1); return; }
+      const [id, c] = /^\d+$/.test(m[1]) ? [m[2], m[1]] : [m[1], m[2]];
+      items.push({ id: id.toLowerCase(), count: +c });
+    });
+    if (bad.length) return toast('Zeilen nicht verstanden: ' + bad.join(', '), true);
+    p.items = MC.normalizeItems(items); touch(p);
+    persist({ items: p.items }); toast('Gespeichert');
+  };
+  $('#notes').onchange = (e) => { p.notes = e.target.value; persist({ notes: p.notes }); };
+  $('#exJson').onclick = () => download(`${p.name}.json`, JSON.stringify({ name: p.name, items: p.items.map((i) => ({ id: 'minecraft:' + i.id, count: i.count })) }, null, 2), 'application/json');
+  $('#exCsv').onclick = () => download(`${p.name}.csv`, toCsv(p.items, stockOf(p)), 'text/csv');
+  $('#exTxt').onclick = () => {
+    const st = stockOf(p), pl = MC.placedOf(p);
+    const openOf = (i) => Math.max(0, i.count - (pl[i.id] || 0) - (st[i.id] || 0));
+    const lines = p.items.filter((i) => openOf(i) > 0).sort((a, b) => b.count - a.count).map((i) => {
+      const o = openOf(i), ss = MC.stackSize(i.id);
+      const st = Math.floor(o / ss), r = o % ss;
+      return `- ${MC.displayName(i.id)}: ${o}${st ? ` (${st}×${ss}${r ? ' + ' + r : ''})` : ''}`;
+    });
+    download(`${p.name}.txt`, `${p.name} – noch offen\n` + lines.join('\n'), 'text/plain');
+  };
+}
+function toCsv(items, collected) {
+  const rows = [['Item', 'ID', 'Anzahl', 'Stacks', 'Rest', 'Shulkerboxen', 'Vorhanden']];
+  for (const i of items) {
+    const ss = MC.stackSize(i.id);
+    rows.push([MC.displayName(i.id), i.id[0] === '#' ? '' : 'minecraft:' + i.id, i.count, Math.floor(i.count / ss), i.count % ss, (MC.slotsFor(i.id, i.count) / SHULKER).toFixed(2), collected ? (collected[i.id] || 0) : '']);
+  }
+  return '﻿' + rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n');
+}
+function download(name, data, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([data], { type }));
+  a.download = name.replace(/[\\/:*?"<>|]/g, '_');
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ---------- Automatisch aktualisieren ---------- */
+// Holt neue Daten vom Server (Sammelkisten, Baufortschritt, Änderungen von Mitspielern), ohne die Seite neu zu laden
+const stamp = (x) => `${x.updated}|${x.syncTime != null ? x.syncTime : (x.sync && x.sync.time) || 0}`;
+let lastRefresh = 0, refreshing = false;
+async function refreshNow(manual) {
+  if (!S.me || refreshing) return;
+  refreshing = true; lastRefresh = Date.now();
+  try {
+    const list = await api('/projects');
+    if (JSON.stringify(list) !== JSON.stringify(S.projects)) { S.projects = list; renderSidebar(); }
+    const p = S.current;
+    if (!p || saveTimer || saving) return;
+    // nicht mitten in einer Eingabe, im Editor oder in der 3D-Ansicht neu zeichnen
+    const el = document.activeElement;
+    const busy = (el && el.matches('#content input[type=number], #content input[type=text], #content textarea')) || S.view === 'view3d' || S.view === 'edit';
+    if (p.combo) { if (!busy && p.parts.some((q) => { const sum = list.find((x) => x.id === q.id); return !sum || stamp(sum) !== stamp(q); })) await openCombo(); return; }
+    const sum = list.find((x) => x.id === p.id);
+    if (!sum) { if (manual) toast('Dieses Projekt gibt es nicht mehr', true); return; }
+    if (stamp(sum) === stamp(p) || busy) return;
+    const np = await api('/projects/' + p.id);
+    if (S.current !== p || saveTimer || saving) return;
+    S.current = np;
+    rerender();
+  } catch (e) { if (manual) toast('Aktualisieren fehlgeschlagen: ' + e.message, true); }
+  finally { refreshing = false; const b = $('#refreshBtn'); if (b) b.title = 'Jetzt aktualisieren (zuletzt ' + new Date().toLocaleTimeString('de-CH') + ')'; }
+}
+setInterval(() => { if (S.refresh > 0 && !document.hidden && Date.now() - lastRefresh >= S.refresh * 1000) refreshNow(); }, 1000);
+// Zurück im Tab (z.B. aus dem Spiel): sofort nachladen statt bis zum nächsten Takt zu warten
+document.addEventListener('visibilitychange', () => { if (!document.hidden && S.refresh > 0) refreshNow(); });
+window.addEventListener('focus', () => { if (S.refresh > 0 && Date.now() - lastRefresh > 1500) refreshNow(); });
+
+/* ---------- Start ---------- */
+(async () => {
+  try { S.me = await api('/me'); } catch { return; }
+  $('#who').innerHTML = `${esc(S.me.name)}${S.me.local ? '' : ' · <a href="#" id="logout" style="color:inherit">Abmelden</a>'}`;
+  const lo = $('#logout');
+  if (lo) lo.onclick = async (e) => { e.preventDefault(); try { await api('/logout', { method: 'POST' }); } catch {} showLogin(); };
+  try { S.custom = await api('/custom-recipes'); } catch {}
+  await loadProjects();
+  let last = null;
+  try { last = JSON.parse(localStorage.getItem('mcml-ui') || '{}').lastId; } catch {}
+  S.combo = new Set([...S.combo].filter((id) => S.projects.some((p) => p.id === id)));
+  if (last && S.projects.some((p) => p.id === last)) openProject(last);
+  else if (S.projects[0]) openProject(S.projects[0].id);
+  else render();
+})();
+</script>
+</body>
+</html>

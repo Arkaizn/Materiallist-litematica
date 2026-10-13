@@ -1,0 +1,6 @@
+{
+  "_info": "Umbenennen zu recipes.custom.json, um eigene Rezepte zu ergänzen oder zu überschreiben. 'null' = Item nie zerlegen.",
+  "copper_bulb": { "out": 4, "in": { "copper_block": 3, "blaze_rod": 1, "redstone": 1 } },
+  "deepslate_tiles": null,
+  "my_mod:fancy_block": { "out": 1, "in": { "stone": 4, "gold_ingot": 1 } }
+}
