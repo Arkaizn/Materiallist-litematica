@@ -6,7 +6,9 @@ Material lists for building projects as a website, served straight from the Mine
 - **In singleplayer:** The same jar starts the site for your own machine only (`http://localhost:8177`), without login.
 - **On the client (optional):** Detects Litematica placements automatically, creates projects from them, reports build progress and shows a button for collection chests in the chest screen.
 
-Requires Fabric API. Build the jar with `mod/build.sh` (no Gradle needed, just the Prism instance); it ends up in `mod/build/materiallist-litematica-2.0.0+26.3.jar`.
+Requires Fabric API. Download the jar from the [Releases](https://github.com/Arkaizn/Materiallist-litematica/releases) page, or build it yourself with `mod/build.sh` (no Gradle needed, just the Prism instance); it ends up in `mod/build/materiallist-litematica-2.0.0+26.3.jar`.
+
+To publish a new release: bump `version` in `mod/resources/fabric.mod.json`, then push a tag `v<version>` (e.g. `v2.0.1`). GitHub Actions builds the jar and attaches it to a new release.
 
 ## Server setup
 
