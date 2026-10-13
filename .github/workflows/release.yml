@@ -1,61 +1,31 @@
-name: Build & release
+name: Release
 
+# Pushing a tag like v2.0.0 publishes a GitHub release with the jar from mod/build/ attached.
 on:
   push:
-    branches: ["main", "claude/**"]
     tags: ["v*"]
-  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "25"
-
-      - name: Read versions
-        id: v
-        run: |
-          echo "mod=$(python3 -c "import json;print(json.load(open('mod/resources/fabric.mod.json'))['version'])")" >> "$GITHUB_OUTPUT"
-          echo "mc=26.3" >> "$GITHUB_OUTPUT"
-
-      - name: Download Minecraft, Fabric and Litematica
-        run: python3 mod/ci-fetch.py "$RUNNER_TEMP/prism" "${{ steps.v.outputs.mc }}"
-
-      - name: Build
-        run: PRISM="$RUNNER_TEMP/prism" sh mod/build.sh "$RUNNER_TEMP/prism/instances/${{ steps.v.outputs.mc }}"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: materiallist-litematica-${{ steps.v.outputs.mod }}+${{ steps.v.outputs.mc }}
-          path: mod/build/*.jar
-
-      - name: Check tag matches mod version
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          [ "${GITHUB_REF_NAME}" = "v${{ steps.v.outputs.mod }}" ] || { echo "Tag ${GITHUB_REF_NAME} does not match version ${{ steps.v.outputs.mod }} in fabric.mod.json"; exit 1; }
-
       - name: Create GitHub release
-        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          name: Materiallist-Litematica ${{ steps.v.outputs.mod }} for Minecraft ${{ steps.v.outputs.mc }}
+          name: Materiallist-Litematica ${{ github.ref_name }}
           files: mod/build/*.jar
+          fail_on_unmatched_files: true
           body: |
             Material lists for building projects as a website, served straight from the Minecraft server.
 
-            **Requires:** Fabric Loader, Fabric API, Minecraft ${{ steps.v.outputs.mc }}. Litematica is optional (client only).
+            **Requires:** Minecraft 26.3, Fabric Loader, Fabric API. Litematica is optional (client only).
 
-            - **Server / singleplayer:** put the jar into `mods`, start the game, then run `/materiallist login` in game.
+            - **Server / singleplayer:** put the jar into the `mods` folder, start the game, then follow the in-game command to log in on the website.
             - **Client (optional):** with Litematica installed, placements are detected automatically and build progress is synced.
-
-            **Upgrading from "Materialliste":** remove the old `materialliste-*.jar`. The old config and data folders are moved to `config/materiallist.json` and `materiallist/` automatically on first start. Commands are now `/materiallist …` (e.g. `/materiallist chest <project>`).
 
             See the [README](https://github.com/${{ github.repository }}#readme) for setup details.
