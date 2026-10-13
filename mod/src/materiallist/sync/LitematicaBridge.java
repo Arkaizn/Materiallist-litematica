@@ -1,4 +1,4 @@
-package materialliste.sync;
+package materiallist.sync;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -24,28 +24,28 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
-/** Alles, was Litematica-Klassen anfasst. Wird nur geladen, wenn Litematica installiert ist. */
+/** Everything that touches Litematica classes. Only loaded when Litematica is installed. */
 final class LitematicaBridge {
-    /** Je Platzierung: pro Chunk die richtig gesetzten Blöcke. Chunks ausser Sichtweite behalten ihren letzten Stand. */
+    /** Per placement: the correctly placed blocks per chunk. Chunks out of view keep their last state. */
     static class Cache { String sig = ""; Map<String, Map<String, Integer>> chunks = new HashMap<>(); transient int cursor; }
 
-    // Nur Eigenschaften, die für die Stückzahl wichtig sind (Doppel-Slabs, obere Türhälfte, Kerzen …)
+    // Only properties that matter for the item count (double slabs, upper door half, candles …)
     private static final Set<String> PROPS = Set.of("type", "half", "part", "layers", "pickles", "candles", "eggs", "flower_amount", "segment_amount");
-    private static final int BUDGET = 200_000;   // Blockvergleiche pro Durchlauf
+    private static final int BUDGET = 200_000;   // block comparisons per pass
 
     static String keyOf(SchematicPlacement p) {
         Path f = p.getSchematicFile();
         return p.getName() + "|" + (f != null && f.getFileName() != null ? f.getFileName().toString() : "");
     }
 
-    /** Datei der Schematic zu einer aktiven Platzierung, null wenn es sie nicht (mehr) gibt */
+    /** Schematic file of an active placement, null if it doesn't exist (anymore) */
     static Path fileOf(String key) {
         for (SchematicPlacement p : DataManager.getSchematicPlacementManager().getAllSchematicsPlacements())
             if (p.isEnabled() && keyOf(p).equals(key)) return p.getSchematicFile();
         return null;
     }
 
-    /** Aktive Platzierungen als { Schlüssel, Anzeigename } für den Knopf in der Kiste */
+    /** Active placements as { key, display name } for the button in the chest screen */
     static List<String[]> active() {
         List<String[]> out = new ArrayList<>();
         for (SchematicPlacement p : DataManager.getSchematicPlacementManager().getAllSchematicsPlacements())
@@ -53,7 +53,7 @@ final class LitematicaBridge {
         return out;
     }
 
-    /** Vergleicht alle aktiven Platzierungen mit der Welt und hängt sie an out. Gibt true zurück, wenn sich etwas geändert hat. */
+    /** Compares all active placements with the world and appends them to out. Returns true if anything changed. */
     static boolean scan(Minecraft mc, Map<String, Cache> caches, JsonArray out) {
         WorldSchematic sw = SchematicWorldHandler.getSchematicWorld();
         ClientLevel level = mc.level;
@@ -79,9 +79,9 @@ final class LitematicaBridge {
             if (bounds.isEmpty()) continue;
             Cache cache = caches.computeIfAbsent(keyOf(p), k -> new Cache());
             if (cache.chunks == null) cache.chunks = new HashMap<>();
-            if (!sig.toString().equals(cache.sig)) { cache.sig = sig.toString(); cache.chunks.clear(); changed = true; }   // verschoben oder gedreht
+            if (!sig.toString().equals(cache.sig)) { cache.sig = sig.toString(); cache.chunks.clear(); changed = true; }   // moved or rotated
 
-            // alle Chunks der Platzierung, reihum mit begrenztem Aufwand pro Durchlauf
+            // all chunks of the placement, round-robin with limited work per pass
             List<long[]> chunks = new ArrayList<>();
             java.util.HashSet<Long> seen = new java.util.HashSet<>();
             for (int[] r : bounds) for (int cx = r[0] >> 4; cx <= r[3] >> 4; cx++) for (int cz = r[2] >> 4; cz <= r[5] >> 4; cz++)
@@ -104,7 +104,8 @@ final class LitematicaBridge {
                 String ck = cx + "," + cz;
                 if (!counts.equals(cache.chunks.get(ck))) { cache.chunks.put(ck, counts); changed = true; }
             }
-            cache.cursor = (start + visited) % chunks.size();   // beim nächsten Durchlauf dort weitermachen
+            cache.cursor = (start + visited) % chunks.size();   // continue there on the next pass
+
 
             Map<String, Integer> total = new TreeMap<>();
             for (Map<String, Integer> c : cache.chunks.values()) c.forEach((k, v) -> total.merge(k, v, Integer::sum));

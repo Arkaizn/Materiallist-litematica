@@ -1,6 +1,6 @@
 #!/bin/sh
-# Baut die Mod ohne Gradle: Minecraft 26.x ist nicht mehr obfuskiert, also reicht javac gegen die Jars der Prism-Instanz.
-# Aufruf: ./build.sh [Pfad zur Prism-Instanz]   (Standard: ~/.local/share/PrismLauncher/instances/26.3)
+# Builds the mod without Gradle: Minecraft 26.x is no longer obfuscated, so javac against the jars of the Prism instance is enough.
+# Usage: ./build.sh [path to Prism instance]   (default: ~/.local/share/PrismLauncher/instances/26.3)
 set -e
 cd "$(dirname "$0")"
 PRISM="${PRISM:-$HOME/.local/share/PrismLauncher}"
@@ -21,6 +21,7 @@ done
 "$JAVAC" -nowarn -proc:none -cp "$CP" -d "$TMP/classes" $(find src -name '*.java')
 mkdir -p "$TMP/classes/web" && cp ../public/index.html ../public/logic.js ../public/mcmodel.js ../public/render.js "$TMP/classes/web/"
 cp resources/fabric.mod.json "$TMP/classes/"
-"$JAR" --create --file "build/materialliste-2.0.0+$MC.jar" -C "$TMP/classes" .
+"$JAR" --create --file "build/materiallist-litematica-2.0.0+$MC.jar" -C "$TMP/classes" .
 rm -rf "$TMP"
-echo "Fertig: $(pwd)/build/materialliste-2.0.0+$MC.jar"
+echo "Done: $(pwd)/build/materiallist-litematica-2.0.0+$MC.jar"
+

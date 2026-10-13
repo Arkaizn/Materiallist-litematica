@@ -1,4 +1,4 @@
-package materialliste.web;
+package materiallist.web;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -19,7 +19,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Litematica-Schematic (.litematic) -> Materialliste und Blockpositionen. Dateien kommen von Spielern, also wird alles begrenzt und geprüft. */
+/** Litematica schematic (.litematic) -> material list and block positions. Files come from players, so everything is limited and checked. */
 public final class Litematic {
     static final long MAX_UNPACKED = 512L * 1024 * 1024;
     static final long MAX_VOLUME = 64_000_000;
@@ -40,13 +40,13 @@ public final class Litematic {
     private static final Pattern CANDLE_CAKE = Pattern.compile("^(.*candle)_cake$");
     private static final Pattern POTTED = Pattern.compile("^potted_(.+)$");
 
-    /** Block-State -> Items, die man dafür braucht (addiert in out) */
+    /** Block state -> items needed for it (added into out) */
     public static void blockToItems(String fullName, Map<String, String> p, long count, Map<String, Long> out) {
-        if (fullName.contains(":") && !fullName.startsWith("minecraft:")) { out.merge(fullName, count, Long::sum); return; }   // Mod-Block
+        if (fullName.contains(":") && !fullName.startsWith("minecraft:")) { out.merge(fullName, count, Long::sum); return; }   // mod block
         String id = fullName.replaceFirst("^minecraft:", "");
         if (SKIP.contains(id)) return;
-        if ("upper".equals(p.get("half"))) return;                              // obere Hälfte von Türen / hohen Pflanzen
-        if ("head".equals(p.get("part")) && id.endsWith("_bed")) return;        // Bett zählt nur einmal
+        if ("upper".equals(p.get("half"))) return;                              // upper half of doors / tall plants
+        if ("head".equals(p.get("part")) && id.endsWith("_bed")) return;        // a bed only counts once
         id = RENAME.getOrDefault(id, id);
         if (id.endsWith("wall_torch")) id = id.substring(0, id.length() - "wall_torch".length()) + "torch";
         Matcher m = WALL.matcher(id);
@@ -75,7 +75,7 @@ public final class Litematic {
 
     private static CompoundTag read(byte[] data) throws Exception {
         CompoundTag root = NbtIo.readCompressed(new ByteArrayInputStream(data), NbtAccounter.create(MAX_UNPACKED));
-        if (root.getCompound("Regions").isEmpty()) throw new IllegalArgumentException("Keine gültige .litematic-Datei (Regions fehlen)");
+        if (root.getCompound("Regions").isEmpty()) throw new IllegalArgumentException("Not a valid .litematic file (Regions missing)");
         return root;
     }
 
@@ -94,8 +94,8 @@ public final class Litematic {
             if (pal.isEmpty() || longs == null || vol <= 0) continue;
             int bits = Math.max(2, 32 - Integer.numberOfLeadingZeros(pal.size() - 1));
             total += vol;
-            // Grössenangaben stammen aus der Datei: nichts anlegen, was die Daten gar nicht hergeben
-            if (total > MAX_VOLUME || pal.size() > 65536 || (long) longs.length * 64 < vol * bits) throw new IllegalArgumentException("Schematic ist zu groß oder beschädigt");
+            // Sizes come from the file: don't allocate anything the data can't actually back
+            if (total > MAX_VOLUME || pal.size() > 65536 || (long) longs.length * 64 < vol * bits) throw new IllegalArgumentException("Schematic is too large or damaged");
             List<String> names = new ArrayList<>();
             List<Map<String, String>> props = new ArrayList<>();
             for (int i = 0; i < pal.size(); i++) {
@@ -124,7 +124,7 @@ public final class Litematic {
         return out;
     }
 
-    /** Materialliste und Metadaten */
+    /** Material list and metadata */
     public static Parsed parse(byte[] data) throws Exception {
         CompoundTag root = read(data);
         Map<String, Long> counts = new LinkedHashMap<>();
@@ -149,7 +149,8 @@ public final class Litematic {
     }
     private static String cut(String s, int n) { return s.length() > n ? s.substring(0, n) : s; }
 
-    /** Blockpositionen für die 3D-Ansicht: je Region Palette + Indizes (uint16, little endian, base64) */
+    /** Block positions for the 3D view: palette + indices per region (uint16, little endian, base64) */
+
     public static JsonObject voxels(byte[] data) throws Exception {
         JsonArray regs = new JsonArray();
         for (Region r : regions(read(data))) {

@@ -1,4 +1,4 @@
-// Erzeugt eine Test-.litematic (gzip-NBT) mit bekannter Blockverteilung
+// Generates a test .litematic (gzip NBT) with a known block distribution
 const zlib = require('zlib');
 function w(){const parts=[];return{
  b(v){const x=Buffer.alloc(1);x.writeInt8(v);parts.push(x)},
@@ -20,7 +20,7 @@ const sx=7,sy=5,sz=3, vol=sx*sy*sz; // 105
 const bits=Math.max(2,32-Math.clz32(pal.length-1)); // 4
 const idx=[]; for(let i=0;i<vol;i++) idx.push(i%pal.length);
 const expect={}; idx.forEach(v=>expect[v]=(expect[v]||0)+1);
-// lückenloses Packing
+// seamless packing
 const nl=Math.ceil(vol*bits/64); const longs=new Array(nl).fill(0n);
 idx.forEach((v,i)=>{const o=BigInt(i*bits);const li=Number(o/64n),s=o%64n;longs[li]|=(BigInt(v)<<s)&((1n<<64n)-1n);if(s+BigInt(bits)>64n)longs[li+1]|=BigInt(v)>>(64n-s)});
 const signed=longs.map(x=>BigInt.asIntN(64,x));
@@ -28,7 +28,8 @@ const W=w(); W.b(10); W.str('');
 const palList={t:10,items:pal.map(([n,p])=>{const e=[[8,'Name',n]];const pe=Object.entries(p);if(pe.length)e.push([10,'Properties',pe.map(([k,v])=>[8,k,v])]);return e})};
 payload(W,10,[
  [3,'MinecraftDataVersion',3955],[3,'Version',6],
- [10,'Metadata',[[8,'Name','Testbau'],[8,'Author','Tester'],[10,'EnclosingSize',[[3,'x',sx],[3,'y',sy],[3,'z',sz]]],[3,'RegionCount',1]]],
+ [10,'Metadata',[[8,'Name','Test build'
+],[8,'Author','Tester'],[10,'EnclosingSize',[[3,'x',sx],[3,'y',sy],[3,'z',sz]]],[3,'RegionCount',1]]],
  [10,'Regions',[[10,'main',[[10,'Size',[[3,'x',-sx],[3,'y',sy],[3,'z',sz]]],[9,'BlockStatePalette',palList],[12,'BlockStates',signed]]]]]
 ]);
 require('fs').writeFileSync(process.argv[2]||'test.litematic', zlib.gzipSync(W.out()));

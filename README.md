@@ -1,17 +1,17 @@
-# Minecraft Materialliste
+# Materiallist-Litematica
 
-Materiallisten für Bauprojekte als Webseite, direkt aus dem Minecraft-Server heraus (wie BlueMap). Eine einzige Mod-Jar für **Fabric, Minecraft 26.3**:
+Material lists for building projects as a website, served straight from the Minecraft server (like BlueMap). A single mod jar for **Fabric, Minecraft 26.3**:
 
-- **Auf dem Server:** Die Mod startet beim Serverstart die Webseite. Spieler brauchen nichts zu installieren.
-- **Im Singleplayer:** Dieselbe Jar startet die Seite nur für den eigenen Rechner (`http://localhost:8177`), ohne Anmeldung.
-- **Auf dem Client (optional):** Erkennt Litematica-Platzierungen automatisch, legt daraus Projekte an, meldet den Baufortschritt und zeigt im Kistenfenster einen Knopf für Sammelkisten.
+- **On the server:** The mod starts the website when the server starts. Players don't need to install anything.
+- **In singleplayer:** The same jar starts the site for your own machine only (`http://localhost:8177`), without login.
+- **On the client (optional):** Detects Litematica placements automatically, creates projects from them, reports build progress and shows a button for collection chests in the chest screen.
 
-Braucht Fabric API. Die Jar liegt in `mod/build/materialliste-2.0.0+26.3.jar`, neu bauen mit `mod/build.sh` (kein Gradle nötig, nur die Prism-Instanz).
+Requires Fabric API. Build the jar with `mod/build.sh` (no Gradle needed, just the Prism instance); it ends up in `mod/build/materiallist-litematica-2.0.0+26.3.jar`.
 
-## Einrichten auf dem Server
+## Server setup
 
-1. Jar in den `mods`-Ordner des Fabric-Servers legen, Server starten.
-2. `config/materialliste.json` anpassen (wird beim ersten Start angelegt) und Server neu starten:
+1. Put the jar into the `mods` folder of the Fabric server and start the server.
+2. Adjust `config/materiallist.json` (created on first start) and restart the server:
 
 ```json
 {
@@ -26,68 +26,70 @@ Braucht Fabric API. Die Jar liegt in `mod/build/materialliste-2.0.0+26.3.jar`, n
 }
 ```
 
-- **`publicUrl`**: die Adresse, über die Spieler die Seite erreichen. Sie steht im Login-Link, und ihr Hostname ist automatisch erlaubt.
-- **`allowedHosts`**: weitere Hostnamen, über die die Seite aufgerufen werden darf, z.B. `["liste.example.org"]`. IP-Adressen und `localhost` gehen immer. Alles andere wird mit Fehler 403 abgelehnt (Schutz vor fremden Webseiten). `["*"]` schaltet die Prüfung ab.
-- Der Port muss in der Firewall offen sein. Ein Proxy wie Velocity leitet ihn nicht weiter: Die Seite läuft auf dem Rechner des eigentlichen Fabric-Servers.
+- **`publicUrl`**: the address players use to reach the site. It is used in the login link, and its hostname is allowed automatically.
+- **`allowedHosts`**: additional hostnames the site may be accessed through, e.g. `["list.example.org"]`. IP addresses and `localhost` always work. Everything else is rejected with error 403 (protection against foreign websites). `["*"]` turns the check off.
+- The port must be open in the firewall. A proxy like Velocity does not forward it: the site runs on the machine of the actual Fabric server.
 
-Die Daten liegen im Serverordner unter `materialliste/` (Projekte, Schematics, Sammelkisten, Anmeldungen, Texturen-Cache). Für ein Backup diesen Ordner kopieren.
+The data lives in the server folder under `materiallist/` (projects, schematics, collection chests, logins, texture cache). To back up, copy this folder.
 
-## Benutzen
+**Upgrading from the old "Materialliste" version:** on first start, `config/materialliste.json` and the `materialliste/` data folder are moved to their new names automatically (only if the new ones don't exist yet). The client mod does the same for `config/materialliste-sync/`. Remove the old `materialliste-*.jar` from the `mods` folder.
 
-| Im Spiel | |
+## Usage
+
+| In game | |
 |---|---|
-| `/materialliste login` | Gibt dir einen Link in den Chat. Draufklicken, dann bist du im Browser 30 Tage als dieser Spieler angemeldet. |
-| `/materialliste kiste <Projekt>` | Die Kiste, die du anschaust, wird Sammelkiste für das Projekt. Ihr Inhalt wird automatisch gezählt. |
-| `/materialliste kiste aus` | Die Kiste zählt nicht mehr. |
-| `/materialliste` | Adresse der Seite und Kurzhilfe. |
-| `/materialliste weblogin <Spieler>` | Nur Konsole/Besitzer: Login-Link für einen Spieler erzeugen. |
+| `/materiallist login` | Puts a link into chat. Click it and you are logged in as this player in the browser for 30 days. |
+| `/materiallist chest <project>` | The chest you are looking at becomes a collection chest for the project. Its contents are counted automatically. |
+| `/materiallist chest off` | The chest no longer counts. |
+| `/materiallist` | Address of the site and short help. |
+| `/materiallist weblogin <player>` | Console/owners only: create a login link for a player. |
 
-Auf der Seite:
+On the website:
 
-- **Projekte anlegen**: `.litematic` oder JSON-Materialliste hochladen (oder automatisch per Client-Mod).
-- **Checkliste**, **Nächste Schritte** (was sammeln, was craften, wohin mit Vorhandenem), **Grundmaterialien**, **Crafting-Schritte**, **3D-Ansicht**, **Bearbeiten & Export**.
-- **Teilen**: Knopf „Teilen“ oben rechts, dann Spielernamen eintragen. Geteilte Spieler sehen das Projekt, tragen Mengen ein, setzen Sammelkisten und können die Schematic herunterladen (unter „Bearbeiten & Export“). Löschen und Teilen kann nur der Besitzer.
-- **Zusammenlegen**: Hat jemand dieselbe Schematic schon als eigenes Projekt, erscheint im geteilten Projekt der Knopf „Zusammenlegen“. Sammelkisten und eingetragene Mengen wandern ins gemeinsame Projekt, das eigene wird gelöscht.
-- **Nächste Schritte**: eine Karte je Endprodukt mit allem, was dafür insgesamt nötig ist, und den Crafting-Schritten in der richtigen Reihenfolge. Dazu eine Sammelliste aller fehlenden Rohstoffe.
-- **Bestand**: kommt aus den Sammelkisten (auch Inhalt von Shulkerboxen und Bündeln), auf Wunsch zusätzlich aus den Inventaren der Mitglieder, die online sind. Von Hand eingetragene Mengen gelten, bis sich der Wert im Spiel ändert oder du auf ✎ klickst.
+- **Create projects**: upload a `.litematic` or JSON material list (or automatically via the client mod).
+- **Checklist**, **Next steps** (what to gather, what to craft, where to put what you have), **Raw materials**, **Crafting steps**, **3D view**, **Edit & export**.
+- **Share**: "Share" button at the top right, then enter player names. Shared players see the project, enter amounts, set collection chests and can download the schematic (under "Edit & export"). Only the owner can delete and share.
+- **Merge**: if someone already has the same schematic as their own project, the shared project shows a "Merge" button. Collection chests and entered amounts move into the shared project, and the own project is deleted.
+- **Next steps**: one card per final product with everything it needs in total, and the crafting steps in the right order. Plus a gathering list of all missing raw materials.
+- **Stock**: comes from the collection chests (including the contents of shulker boxes and bundles), optionally also from the inventories of members who are online. Manually entered amounts apply until the value in the game changes or you click ✎.
 
-## Mit und ohne Client-Mod
+## With and without the client mod
 
-| | ohne Client-Mod | mit Client-Mod + Litematica |
+| | without client mod | with client mod + Litematica |
 |---|---|---|
-| Seite, Login, Teilen, 3D-Ansicht | ja | ja |
-| Schematic hochladen | auf der Seite | automatisch aus der aktiven Platzierung |
-| Sammelkisten | per Befehl | per Knopf im Kistenfenster oder Befehl |
-| Baufortschritt (gesetzte Blöcke abziehen) | nein | ja |
+| Site, login, sharing, 3D view | yes | yes |
+| Upload schematic | on the website | automatically from the active placement |
+| Collection chests | via command | via button in the chest screen or command |
+| Build progress (subtract placed blocks) | no | yes |
 
-Der Server kann nicht sehen, was ein Spieler in Litematica geladen hat. Das geht nur über die Client-Mod. Die alte Mod `materialliste-sync` muss vorher aus dem `mods`-Ordner entfernt werden.
+The server cannot see what a player has loaded in Litematica. That only works through the client mod. The old `materialliste-sync` mod must be removed from the `mods` folder first.
 
-## Umzug von der Docker-Version
+## Moving from the Docker version
 
-1. Der alte Container ist bereits gestoppt, die alten Dateien liegen in `archive/docker-version/`.
-2. `archive/docker-version/data/projects/` und `…/schematics/` in den Ordner `materialliste/` des Servers kopieren (vor dem Serverstart).
-3. Im Spiel `/materialliste login`. Projekte ohne Besitzer gehören dem ersten Spieler, der sich anmeldet.
+1. The old container is already stopped, the old files are in `archive/docker-version/`.
+2. Copy `archive/docker-version/data/projects/` and `…/schematics/` into the server's `materiallist/` folder (before starting the server).
+3. In game, run `/materiallist login`. Projects without an owner belong to the first player who logs in.
 
 
-## Sicherheit
+## Security
 
-- **Anmeldung nur über das Spiel**: Der Login-Link ist ein Einmal-Token (5 Minuten gültig), also kann sich niemand als ein anderer Spieler ausgeben. Sitzungen liegen nur als Hash auf dem Server.
-- **Zugriff**: Jeder sieht nur eigene und mit ihm geteilte Projekte. Fremde Projekte antworten wie nicht vorhandene.
-- **Fremde Webseiten** können keine Anfragen im Namen eines angemeldeten Spielers schicken (Prüfung von `Origin`, `Host` und Cookie mit `SameSite`).
-- **Uploads** sind begrenzt: 64 MB pro Datei, 512 MB entpackt, 64 Mio. Blöcke, 50 Projekte pro Spieler.
-- **Kein HTTPS**: Die Seite spricht nur HTTP. Wer mitlesen kann (z.B. im selben WLAN), kann das Sitzungs-Cookie abgreifen. Für öffentliche Server einen Reverse-Proxy mit HTTPS davorsetzen und dessen Domain als `publicUrl` eintragen.
-- **Client-Mod**: Der gemeldete Baufortschritt wird dem Client geglaubt. Ein manipulierter Client kann also den Fortschritt seiner eigenen bzw. mit ihm geteilten Projekte fälschen, mehr nicht.
+- **Login only through the game**: the login link is a one-time token (valid for 5 minutes), so nobody can pose as another player. Sessions are only stored as a hash on the server.
+- **Access**: everyone only sees their own projects and projects shared with them. Other people's projects respond as if they didn't exist.
+- **Foreign websites** cannot send requests on behalf of a logged-in player (checks on `Origin`, `Host` and a cookie with `SameSite`).
+- **Uploads** are limited: 64 MB per file, 512 MB unpacked, 64 million blocks, 50 projects per player.
+- **No HTTPS**: the site only speaks HTTP. Anyone who can listen in (e.g. on the same Wi-Fi) can grab the session cookie. For public servers, put a reverse proxy with HTTPS in front and set its domain as `publicUrl`.
+- **Client mod**: the reported build progress is trusted from the client. A manipulated client can therefore fake the progress of its own projects or projects shared with it, nothing more.
 
-## Texturen (Icons und 3D-Ansicht)
+## Textures (icons and 3D view)
 
-Texturen und Blockmodelle werden beim ersten Aufruf einmalig aus [misode/mcmeta](https://github.com/misode/mcmeta) geladen und in `materialliste/cache/assets/` abgelegt. Ohne Internetverbindung des Servers gibt es Buchstaben-Icons und einfarbige Blöcke. Zum Neuladen den Ordner `materialliste/cache/` löschen.
+Textures and block models are loaded once on first use from [misode/mcmeta](https://github.com/misode/mcmeta) and stored in `materiallist/cache/assets/`. If the server has no internet connection, you get letter icons and single-colored blocks. To reload, delete the `materiallist/cache/` folder.
 
-## Eigene Rezepte
+## Custom recipes
 
-`materialliste/recipes.custom.json` anlegen, Beispiel in `examples/recipes.custom.example.json`. So lassen sich Mod-Blöcke ergänzen oder Rezepte überschreiben.
+Create `materiallist/recipes.custom.json`, see the example in `examples/recipes.custom.example.json`. This lets you add mod blocks or override recipes.
 
-## Hinweise zum Litematic-Import
+## Notes on the Litematic import
 
-- Doppel-Slabs zählen als 2, die obere Hälfte von Türen und Betten wird nicht gezählt, Wand-Fackeln/Schilder werden zum Item, Blumentöpfe ergeben Topf + Pflanze, Redstone-Leitung ergibt Redstone.
-- Luft, Wasser, Lava und Piston-Köpfe werden ignoriert.
-- Inhalte von Kisten in der Schematic werden nicht gezählt.
+- Double slabs count as 2, the upper half of doors and beds isn't counted, wall torches/signs become their item, flower pots give pot + plant, redstone wire gives redstone.
+- Air, water, lava and piston heads are ignored.
+- Contents of chests in the schematic are not counted.

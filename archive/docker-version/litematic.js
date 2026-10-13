@@ -1,5 +1,5 @@
 'use strict';
-/* Litematica-Parser: .litematic (gzip-NBT) -> Materialliste. Keine Abhängigkeiten. */
+/* Litematica parser: .litematic (gzip NBT) -> material list. No dependencies. */
 const zlib = require('zlib');
 
 function parseNBT(buf) {
@@ -32,8 +32,8 @@ function parseNBT(buf) {
     11() { const n = buf.readInt32BE(p); p += 4; const a = []; for (let i = 0; i < n; i++) a.push(T[3]()); return a; },
     12() { const n = buf.readInt32BE(p); p += 4; const v = { longs: buf.subarray(p, p + n * 8) }; p += n * 8; return v; },
   };
-  if (buf.readInt8(p++) !== 10) throw new Error('Kein NBT-Compound am Anfang');
-  T[8](); // Root-Name
+  if (buf.readInt8(p++) !== 10) throw new Error('No NBT compound at the start');
+  T[8](); // root name
   return T[10]();
 }
 
@@ -48,14 +48,14 @@ const RENAME = {
   big_dripleaf_stem: 'big_dripleaf', frosted_ice: 'ice', redstone_wire: 'redstone', tripwire: 'string',
 };
 
-/** Block-State -> Liste von [itemId, anzahl] */
+/** Block state -> list of [itemId, count] */
 function blockToItems(fullName, p) {
   p = p || {};
-  if (fullName.includes(':') && !fullName.startsWith('minecraft:')) return [[fullName, 1]]; // Mod-Block
+  if (fullName.includes(':') && !fullName.startsWith('minecraft:')) return [[fullName, 1]]; // mod block
   let id = fullName.replace(/^minecraft:/, '');
   if (SKIP.has(id)) return [];
-  if (p.half === 'upper') return [];                       // obere Hälfte von Türen / hohen Pflanzen
-  if (p.part === 'head' && /_bed$/.test(id)) return [];    // Bett zählt nur einmal
+  if (p.half === 'upper') return [];                       // upper half of doors / tall plants
+  if (p.part === 'head' && /_bed$/.test(id)) return [];    // a bed only counts once
   if (RENAME[id]) id = RENAME[id];
   id = id.replace(/wall_torch$/, 'torch');
   let m;
@@ -82,7 +82,7 @@ const MAX_UNPACKED = 512 * 1024 * 1024;
 const MAX_VOLUME = 64e6;
 const int = (v) => (Number.isFinite(Number(v)) ? Math.trunc(Number(v)) : 0);
 
-/** Palette-Indizes einer Region entpacken (Reihenfolge: y, z, x) */
+/** Unpack the palette indices of a region (order: y, z, x) */
 function readRegion(reg) {
   const pal = reg.BlockStatePalette;
   const sz = reg.Size || {};
@@ -90,10 +90,10 @@ function readRegion(reg) {
   const vol = size[0] * size[1] * size[2];
   if (!Array.isArray(pal) || !pal.length || !reg.BlockStates || !reg.BlockStates.longs || !(vol > 0)) return null;
   const bits = Math.max(2, 32 - Math.clz32(pal.length - 1));
-  // Grössenangaben stammen aus der Datei: nichts anlegen, was die Daten gar nicht hergeben
-  if (vol > MAX_VOLUME || pal.length > 65536 || reg.BlockStates.longs.length * 8 < vol * bits) throw new Error('Region ist zu groß oder beschädigt');
+  // Sizes come from the file: don't allocate anything the data can't actually back
+  if (vol > MAX_VOLUME || pal.length > 65536 || reg.BlockStates.longs.length * 8 < vol * bits) throw new Error('Region is too large or damaged');
   const mask = bits >= 32 ? 0xffffffff : ((1 << bits) - 1) >>> 0;
-  // Litematica packt Bits lückenlos über Long-Grenzen -> als 32-Bit-Wörter (little-endian Bitstrom) lesen
+  // Litematica packs bits seamlessly across long boundaries -> read as 32-bit words (little-endian bit stream)
   const lb = reg.BlockStates.longs;
   const nl = lb.length / 8;
   const w = new Uint32Array(nl * 2 + 1);
@@ -115,13 +115,13 @@ function readRegion(reg) {
 
 function gunzipNBT(input) {
   let buf = input;
-  if (buf[0] === 0x1f && buf[1] === 0x8b) buf = zlib.gunzipSync(buf, { maxOutputLength: MAX_UNPACKED });   // Schutz vor Zip-Bomben
+  if (buf[0] === 0x1f && buf[1] === 0x8b) buf = zlib.gunzipSync(buf, { maxOutputLength: MAX_UNPACKED });   // protection against zip bombs
   const root = parseNBT(buf);
-  if (!root.Regions) throw new Error('Keine gültige .litematic-Datei (Regions fehlen)');
+  if (!root.Regions) throw new Error('Not a valid .litematic file (Regions missing)');
   return root;
 }
 
-/** Blockpositionen für die 3D-Ansicht: je Region Palette + Indizes */
+/** Block positions for the 3D view: palette + indices per region */
 function parseVoxels(input, maxVolume = MAX_VOLUME) {
   const root = gunzipNBT(input);
   const regions = [];
@@ -130,7 +130,7 @@ function parseVoxels(input, maxVolume = MAX_VOLUME) {
     const r = readRegion(reg);
     if (!r) continue;
     total += r.vol;
-    if (total > maxVolume) throw new Error('Schematic ist zu groß für die 3D-Ansicht');
+    if (total > maxVolume) throw new Error('Schematic is too large for the 3D view');
     regions.push({
       min: r.min, size: r.size,
       palette: r.pal.map((e) => ({ name: String(e.Name), props: e.Properties && typeof e.Properties === 'object' ? e.Properties : {} })),
@@ -163,7 +163,8 @@ function parseLitematic(input) {
   return {
     name: String(md.Name || '').slice(0, 120),
     meta: {
-      // alles aus der Datei auf den erwarteten Typ bringen, die Werte landen später in der Seite
+      // coerce everything from the file to the expected type, the values end up in the page later
+
       author: String(md.Author || '').slice(0, 80),
       description: String(md.Description || '').slice(0, 500),
       size: es ? `${int(es.x)}×${int(es.y)}×${int(es.z)}` : '',

@@ -1,4 +1,4 @@
-package materialliste;
+package materiallist;
 
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -7,21 +7,22 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 
-/** Nachrichten zwischen Client-Mod und Server-Mod. Läuft über die normale Spielverbindung, braucht also keine Adresse und kein Passwort. */
+/** Messages between client mod and server mod. Runs over the normal game connection, so it needs no address and no password. */
 public final class Net {
-    /** Grösse eines Datei-Stücks beim Hochladen einer Schematic */
+    /** Size of one file chunk when uploading a schematic */
     public static final int CHUNK = 24_000;
 
-    /** Client -> Server. kind: "state" (JSON mit Platzierungen), "mark" (JSON: Sammelkiste setzen), "file" (JSON-Kopf + Datei-Stück) */
+    /** Client -> Server. kind: "state" (JSON with placements), "mark" (JSON: set collection chest), "file" (JSON header + file chunk) */
     public record ToServer(String kind, byte[] data) implements CustomPacketPayload {
-        public static final Type<ToServer> TYPE = new Type<>(Identifier.fromNamespaceAndPath("materialliste", "to_server"));
+        public static final Type<ToServer> TYPE = new Type<>(Identifier.fromNamespaceAndPath("materiallist", "to_server"));
         public static final StreamCodec<RegistryFriendlyByteBuf, ToServer> CODEC = StreamCodec.composite(ByteBufCodecs.stringUtf8(32), ToServer::kind, ByteBufCodecs.byteArray(30_000), ToServer::data, ToServer::new);
         @Override public Type<ToServer> type() { return TYPE; }
     }
 
-    /** Server -> Client. kind: "want" (Schlüssel einer Platzierung, deren Datei der Server haben möchte) */
+    /** Server -> Client. kind: "want" (key of a placement whose file the server wants) */
     public record ToClient(String kind, byte[] data) implements CustomPacketPayload {
-        public static final Type<ToClient> TYPE = new Type<>(Identifier.fromNamespaceAndPath("materialliste", "to_client"));
+        public static final Type<ToClient> TYPE = new Type<>(Identifier.fromNamespaceAndPath("materiallist", "to_client")
+);
         public static final StreamCodec<RegistryFriendlyByteBuf, ToClient> CODEC = StreamCodec.composite(ByteBufCodecs.stringUtf8(32), ToClient::kind, ByteBufCodecs.byteArray(30_000), ToClient::data, ToClient::new);
         @Override public Type<ToClient> type() { return TYPE; }
     }

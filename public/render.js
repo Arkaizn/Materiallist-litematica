@@ -1,4 +1,4 @@
-/* WebGL: Item-Icons und 3D-Ansicht der Schematic. Braucht mcmodel.js (MCA). */
+/* WebGL: item icons and 3D view of the schematic. Needs mcmodel.js (MCA). */
 (function (root) {
   'use strict';
 
@@ -14,7 +14,7 @@ uniform sampler2D uTex;
 out vec4 o;
 void main() { vec4 c = texture(uTex, vUv) * vCol; if (c.a < 0.1) discard; o = c; }`;
 
-  /* ---------- Matrizen (spaltenweise) ---------- */
+  /* ---------- Matrices (column-major) ---------- */
   const M = {
     ident: () => new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]),
     mul(a, b) {
@@ -45,7 +45,7 @@ void main() { vec4 c = texture(uTex, vUv) * vCol; if (c.a < 0.1) discard; o = c;
     },
   };
 
-  /* ---------- Geometrie-Puffer ---------- */
+  /* ---------- Geometry buffers ---------- */
   class Geo {
     constructor() { this.n = 0; this.cap = 256; this.pos = new Float32Array(this.cap * 12); this.uv = new Float32Array(this.cap * 8); this.col = new Uint8Array(this.cap * 16); }
     grow() {
@@ -80,7 +80,7 @@ void main() { vec4 c = texture(uTex, vUv) * vCol; if (c.a < 0.1) discard; o = c;
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, MCA.img);
     for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
     if (opts.mipmaps) {
-      // nur bis Stufe 3: die 16-Pixel-Kacheln des Atlas bleiben dabei sauber getrennt, in der Ferne flimmert es aber nicht
+      // only up to level 3: the atlas's 16-pixel tiles stay cleanly separated, but distant surfaces don't flicker
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAX_LEVEL, 3);
       gl.generateMipmap(gl.TEXTURE_2D);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
@@ -170,7 +170,7 @@ void main() { vec4 c = texture(uTex, vUv) * vCol; if (c.a < 0.1) discard; o = c;
     free(iconCtx, a); free(iconCtx, b);
     return iconCtx.canvas.toDataURL();
   }
-  /** undefined = Assets laden noch, null = kein Icon vorhanden, sonst { url, flat, standin } */
+  /** undefined = assets still loading, null = no icon available, otherwise { url, flat, standin } */
   function iconFor(id) {
     if (!MCA.img) return undefined;
     if (icons.has(id)) return icons.get(id);
@@ -186,7 +186,7 @@ void main() { vec4 c = texture(uTex, vUv) * vCol; if (c.a < 0.1) discard; o = c;
     return res;
   }
 
-  /* ---------- 3D-Ansicht ---------- */
+  /* ---------- 3D view ---------- */
   function b64ToU16(s) {
     const bin = atob(s), u8 = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
@@ -194,13 +194,14 @@ void main() { vec4 c = texture(uTex, vUv) * vCol; if (c.a < 0.1) discard; o = c;
   }
 
   class Viewer {
-    /** host: Element, vox: Antwort von /api/projects/:id/voxels, onLayer(info): Callback bei Ebenenwechsel */
+    /** host: element, vox: response of /api/projects/:id/voxels, onLayer(info): callback on layer change */
+
     constructor(host, vox, onLayer) {
       this.host = host; this.onLayer = onLayer || (() => {});
       this.canvas = document.createElement('canvas');
       host.appendChild(this.canvas);
       this.ctx = makeGL(this.canvas, { alpha: false, antialias: true, mipmaps: true });
-      if (!this.ctx) throw new Error('WebGL2 wird von diesem Browser nicht unterstützt');
+      if (!this.ctx) throw new Error('WebGL2 is not supported by this browser');
       this.buildGrid(vox);
       this.yMin = 0; this.yMax = this.size[1] - 1;
       this.resetView();
