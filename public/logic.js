@@ -1,4 +1,4 @@
-/* Gemeinsame Logik (Browser + Node): Rezepte, Auflösung bis zu Rohstoffen, Stacks, Kategorien */
+/* Shared logic (browser + Node): recipes, breakdown down to raw materials, stacks, categories */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.MC = factory();
@@ -13,7 +13,7 @@
   const short = (id) => String(id).trim().replace(/^minecraft:/, '');
   const R = (out, inn, via) => ({ out, in: inn, via: via || null });
 
-  // Items, die als "Rohstoff" gelten (kein Rezept) und als Basis für Slabs/Stairs/Walls dienen können
+  // Items that count as a "raw material" (no recipe) and can serve as the base for slabs/stairs/walls
   const RAWS = new Set(['cobblestone', 'cobbled_deepslate', 'andesite', 'granite', 'diorite', 'sandstone',
     'red_sandstone', 'blackstone', 'prismarine', 'tuff', 'mud_bricks', 'end_stone', 'purpur_block']);
 
@@ -48,7 +48,7 @@
     glowstone: R(1, { glowstone_dust: 4 }),
     copper_bulb: R(4, { copper_ingot: 3, blaze_rod: 1, redstone: 1 }),
     lightning_rod: R(1, { copper_ingot: 3 }),
-    // Möbel / Licht
+    // Furniture / light
     chest: R(1, { '#planks': 8 }),
     trapped_chest: R(1, { chest: 1, tripwire_hook: 1 }),
     crafting_table: R(1, { '#planks': 4 }),
@@ -61,7 +61,7 @@
     soul_lantern: R(1, { iron_nugget: 8, soul_torch: 1 }),
     chain: R(1, { iron_nugget: 2, iron_ingot: 1 }),
     candle: R(1, { string: 1, honeycomb: 1 }),
-    // Metall
+    // Metal
     iron_nugget: R(9, { iron_ingot: 1 }),
     iron_block: R(1, { iron_ingot: 9 }),
     gold_block: R(1, { gold_ingot: 9 }),
@@ -75,20 +75,20 @@
     iron_trapdoor: R(1, { iron_ingot: 4 }),
     iron_bars: R(16, { iron_ingot: 6 }),
     bucket: R(1, { iron_ingot: 3 }),
-    // Stein / Glas
-    stone: R(1, { cobblestone: 1 }, 'schmelzen'),
-    smooth_stone: R(1, { stone: 1 }, 'schmelzen'),
+    // Stone / glass
+    stone: R(1, { cobblestone: 1 }, 'smelt'),
+    smooth_stone: R(1, { stone: 1 }, 'smelt'),
     stone_bricks: R(4, { stone: 4 }),
     polished_deepslate: R(4, { cobbled_deepslate: 4 }),
     deepslate_bricks: R(4, { polished_deepslate: 4 }),
     deepslate_tiles: R(4, { deepslate_bricks: 4 }),
     quartz_block: R(1, { quartz: 4 }),
-    glass: R(1, { sand: 1 }, 'schmelzen'),
+    glass: R(1, { sand: 1 }, 'smelt'),
     glass_pane: R(16, { glass: 6 }),
     shulker_box: R(1, { shulker_shell: 2, chest: 1 }),
   };
 
-  const SPECIAL_NAMES = { '#planks': 'Beliebige Planken', '#logs': 'Beliebige Baumstämme' };
+  const SPECIAL_NAMES = { '#planks': 'Any Planks', '#logs': 'Any Logs' };
 
   function logOf(w) {
     if (w === 'crimson' || w === 'warped') return w + '_stem';
@@ -121,11 +121,11 @@
     }
     if (EXPLICIT[id]) return EXPLICIT[id];
     let m;
-    if ((m = id.match(/^stripped_(.+)$/))) return R(1, { [m[1]]: 1 }, 'entrinden');
-    if ((m = id.match(/^waxed_(.+)$/))) return R(1, { [m[1] === 'copper' ? 'copper_block' : m[1]]: 1, honeycomb: 1 }, 'wachsen');
-    if ((m = id.match(/^(exposed|weathered|oxidized)_(.+)$/))) return R(1, { [m[2] === 'copper' ? 'copper_block' : m[2]]: 1 }, 'oxidieren');
+    if ((m = id.match(/^stripped_(.+)$/))) return R(1, { [m[1]]: 1 }, 'strip');
+    if ((m = id.match(/^waxed_(.+)$/))) return R(1, { [m[1] === 'copper' ? 'copper_block' : m[1]]: 1, honeycomb: 1 }, 'wax');
+    if ((m = id.match(/^(exposed|weathered|oxidized)_(.+)$/))) return R(1, { [m[2] === 'copper' ? 'copper_block' : m[2]]: 1 }, 'oxidize');
     for (const c of COLORS) {
-      if (id === c + '_concrete') return R(1, { [c + '_concrete_powder']: 1 }, 'wasser');
+      if (id === c + '_concrete') return R(1, { [c + '_concrete_powder']: 1 }, 'add water');
       if (id === c + '_concrete_powder') return R(8, { sand: 4, gravel: 4, [c + '_dye']: 1 });
     }
     if ((m = id.match(/^(.+?)_(planks|trapdoor|door|slab|stairs|sign|hanging_sign|shelf|fence_gate|fence|button|pressure_plate|boat|wood)$/)) && ctx.woods.has(m[1])) {
@@ -163,7 +163,7 @@
     return recipeFor(id, ctx);
   }
 
-  /** demand: {id: count}. Liefert Rohstoffe + Craftingschritte (Aufrunden erst nach Aggregation je Zwischenprodukt). */
+  /** demand: {id: count}. Returns raw materials + crafting steps (rounding up only after aggregating per intermediate product). */
   function resolve(demand, opts) {
     const ids0 = Object.keys(demand).filter((k) => demand[k] > 0);
     const ctx = makeCtx(opts, ids0);
@@ -200,13 +200,13 @@
     return { raw, crafts };
   }
 
-  // Sammelbegriffe: jede passende Sorte im Bestand zählt mit
+  // Group names: every matching type in stock counts
   const TAGS = { '#planks': /_planks$/, '#logs': /(_log|_stem|_wood|_hyphae)$/ };
 
   /**
-   * Plan mit Bestand: demand = was noch gebraucht wird, stock = was vorhanden ist (egal ob Rohstoff, Zwischen- oder Endprodukt).
-   * Vorhandenes deckt zuerst den direkten Bedarf, der Rest wird zum Craften benutzt.
-   * Liefert je Item einen Knoten { need, final, have, used, missing, crafts, can (jetzt craftbar), inputs } und fertige Listen.
+   * Plan with stock: demand = what is still needed, stock = what is available (raw material, intermediate or final product alike).
+   * Stock covers the direct demand first, the rest is used for crafting.
+   * Returns a node per item { need, final, have, used, missing, crafts, can (craftable now), inputs } and ready-made lists.
    */
   function plan(demand, stock, opts) {
     stock = stock || {};
@@ -251,7 +251,7 @@
       }
       nodes[id] = node;
     }
-    // Was davon geht jetzt sofort? Vorrat, der nicht für den direkten Bedarf reserviert ist, wird verteilt.
+    // What can be done right now? Stock that isn't reserved for the direct demand gets distributed.
     const pool = {};
     for (const id of order) pool[id] = Math.max(0, nodes[id].used - Math.min(nodes[id].final, nodes[id].used));
     const crafting = order.filter((id) => nodes[id].crafts > 0);
@@ -271,7 +271,7 @@
     const raws = order.filter((id) => !nodes[id].recipe && nodes[id].need > 0).sort(byNeed);
     const res = {
       nodes, tagFrom,
-      // was am nächsten am fertigen Block ist zuerst: frisch gecraftete Zwischenprodukte werden gleich weiterverarbeitet
+      // closest to the finished block first: freshly crafted intermediates get processed further right away
       craftNow: crafting.filter((id) => nodes[id].can > 0),
       waiting: crafting.filter((id) => nodes[id].can < nodes[id].crafts).reverse(),
       gather: raws.filter((id) => nodes[id].missing > 0),
@@ -283,28 +283,28 @@
     return res;
   }
 
-  /** Bestand eines Projekts: Sync aus dem Spiel, von Hand eingetragene Werte gehen vor */
+  /** Stock of a project: sync from the game, manually entered values take precedence */
   function effStock(p) {
     const s = Object.assign({}, p.sync && p.sync.stock);
     for (const k in p.stock || {}) s[k] = p.stock[k];
     return s;
   }
   const placedOf = (p) => (p.sync && p.sync.placed) || {};
-  /** Was noch gebraucht wird: Liste minus bereits verbaute Blöcke */
+  /** What is still needed: list minus blocks already placed */
   function demandOf(p) {
     const pl = placedOf(p), d = {};
     for (const i of p.items) { const n = i.count - (pl[i.id] || 0); if (n > 0) d[i.id] = n; }
     return d;
   }
-  /** Nächster Schritt als Text (für die Mod und die Seite) */
+  /** Next step as text (for the mod and the website) */
   function nextText(next) {
-    if (next.type === 'craft') return `${next.via ? next.via.charAt(0).toUpperCase() + next.via.slice(1) : 'Craften'}: ${next.count}× ${displayName(next.id)}`;
-    if (next.type === 'gather') return `Sammeln: ${displayName(next.id)} (noch ${next.count})`;
-    if (next.type === 'build') return 'Alle Materialien sind da – jetzt bauen';
-    return 'Fertig';
+    if (next.type === 'craft') return `${next.via ? next.via.charAt(0).toUpperCase() + next.via.slice(1) : 'Craft'}: ${next.count}× ${displayName(next.id)}`;
+    if (next.type === 'gather') return `Gather: ${displayName(next.id)} (${next.count} left)`;
+    if (next.type === 'build') return 'All materials are here – time to build';
+    return 'Done';
   }
 
-  /** Baum für ein einzelnes Item (Wurzel wird immer aufgelöst). */
+  /** Tree for a single item (the root is always broken down). */
   function tree(id, count, opts) {
     const ctx = makeCtx(opts, [id]);
     function go(id, n, path, isRoot) {
@@ -339,18 +339,18 @@
 
   const CATS = [
     ['Redstone', /redstone|piston|comparator|repeater|observer|hopper|dropper|dispenser|lever|button|pressure_plate|rail|tripwire|copper_bulb|lamp|target|daylight|note_block|slime|honey|tnt/],
-    ['Beleuchtung', /lantern|torch|glowstone|candle|shroomlight|sea_lantern/],
-    ['Glas', /glass/],
-    ['Metall & Erz', /^(iron|gold|copper|diamond|emerald|netherite|coal|lapis|amethyst|quartz|chain)|_ingot|_nugget|raw_/],
-    ['Holz & Möbel', /planks|_log$|_wood$|_stem$|trapdoor|_sign|shelf|fence|_door|stripped|bamboo|chest|barrel|crafting|ladder|^stick$|bookshelf|boat|#/],
-    ['Stein & Erde', /stone|deepslate|brick|cobble|andesite|granite|diorite|tuff|concrete|obsidian|basalt|blackstone|sandstone|terracotta|prismarine|end_stone|netherrack|soul_soil|dirt|sand|gravel|calcite|slab|stairs|wall/],
+    ['Lighting', /lantern|torch|glowstone|candle|shroomlight|sea_lantern/],
+    ['Glass', /glass/],
+    ['Metal & Ore', /^(iron|gold|copper|diamond|emerald|netherite|coal|lapis|amethyst|quartz|chain)|_ingot|_nugget|raw_/],
+    ['Wood & Furniture', /planks|_log$|_wood$|_stem$|trapdoor|_sign|shelf|fence|_door|stripped|bamboo|chest|barrel|crafting|ladder|^stick$|bookshelf|boat|#/],
+    ['Stone & Earth', /stone|deepslate|brick|cobble|andesite|granite|diorite|tuff|concrete|obsidian|basalt|blackstone|sandstone|terracotta|prismarine|end_stone|netherrack|soul_soil|dirt|sand|gravel|calcite|slab|stairs|wall/],
   ];
   function categoryOf(id) {
     const s = short(id);
     for (const [name, re] of CATS) if (re.test(s)) return name;
-    return 'Sonstiges';
+    return 'Other';
   }
-  const CATEGORY_NAMES = CATS.map((c) => c[0]).concat('Sonstiges');
+  const CATEGORY_NAMES = CATS.map((c) => c[0]).concat('Other');
 
   function hueOf(id) {
     let h = 0;
@@ -359,7 +359,8 @@
     return h;
   }
 
-  /** Zusammenführen/Normalisieren einer Item-Liste -> [{id,count}] */
+  /** Merge/normalize an item list -> [{id,count}] */
+
   function normalizeItems(list) {
     const m = {};
     for (const it of list || []) {

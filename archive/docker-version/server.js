@@ -1,5 +1,5 @@
 'use strict';
-/* Minimaler Server ohne Abhängigkeiten: statische UI + JSON-API + Upload (.litematic / .json) */
+/* Minimal server without dependencies: static UI + JSON API + upload (.litematic / .json) */
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -16,8 +16,8 @@ const ASSET_DIR = path.join(DATA, 'cache', 'assets');
 const PUBLIC = path.join(__dirname, 'public');
 for (const d of [PROJ_DIR, SCHEM_DIR, ASSET_DIR]) fs.mkdirSync(d, { recursive: true });
 
-// Texturen + Modelle für Icons und 3D-Ansicht (misode/mcmeta). Werden einmal geladen und in data/cache/assets abgelegt.
-// MC_VERSION (z.B. 1.21.4) legt eine feste Version fest, sonst die jeweils neueste.
+// Textures + models for icons and the 3D view (misode/mcmeta). Loaded once and stored in data/cache/assets.
+// MC_VERSION (e.g. 1.21.4) pins a fixed version, otherwise the latest one is used.
 const SYNC_TOKEN = process.env.SYNC_TOKEN || '';
 const MC_VERSION = process.env.MC_VERSION || '';
 const ref = (branch) => (MC_VERSION ? `${MC_VERSION}-${branch}` : branch);
@@ -52,14 +52,14 @@ const sameSecret = (a, b) => {
   return crypto.timingSafeEqual(x, y);
 };
 
-// Schutz vor fremden Webseiten: Ohne das könnte jede Seite, die du im Browser offen hast, Anfragen an http://localhost:3000 schicken
-// (Projekte anlegen, Sync-Daten fälschen) oder per DNS-Rebinding sogar mitlesen.
+// Protection against foreign websites: without it, any page you have open in the browser could send requests to http://localhost:3000
+// (create projects, fake sync data) or even read along via DNS rebinding.
 const ALLOWED_HOSTS = (process.env.ALLOWED_HOSTS || '').split(',').map((h) => h.trim().toLowerCase()).filter(Boolean);
 function hostAllowed(hostHeader) {
   const h = String(hostHeader || '').toLowerCase().replace(/:\d+$/, '').replace(/^\[|\]$/g, '');
   if (!h) return false;
   if (ALLOWED_HOSTS.includes('*') || ALLOWED_HOSTS.includes(h)) return true;
-  // lokale Namen und IP-Adressen sind in Ordnung, öffentliche Domains nur, wenn sie in ALLOWED_HOSTS stehen
+  // local names and IP addresses are fine, public domains only if they are listed in ALLOWED_HOSTS
   return h === 'localhost' || /^[0-9.]+$/.test(h) || h.includes(':') || !h.includes('.') || /\.(local|lan|home|internal|home\.arpa|localhost)$/.test(h);
 }
 function requestAllowed(req) {
@@ -97,8 +97,8 @@ async function serveAsset(req, res, name) {
   if (!Object.prototype.hasOwnProperty.call(ASSETS, name)) { res.writeHead(404); return res.end('Not found'); }
   let file;
   try { file = await fetchAsset(name); } catch (e) {
-    console.error('Assets konnten nicht geladen werden:', e.message);
-    return fail(res, 502, 'Texturen konnten nicht geladen werden (keine Internetverbindung?)');
+    console.error('Assets could not be loaded:', e.message);
+    return fail(res, 502, 'Textures could not be loaded (no internet connection?)');
   }
   const head = { 'Content-Type': MIME[path.extname(name)] || 'image/png', 'Cache-Control': 'public, max-age=86400' };
   if (wantsGzip(req) && fs.existsSync(file + '.gz')) { file += '.gz'; head['Content-Encoding'] = 'gzip'; }
@@ -109,7 +109,7 @@ async function serveAsset(req, res, name) {
 function readBody(req, limit = 64 * 1024 * 1024) {
   return new Promise((resolve, reject) => {
     const chunks = []; let n = 0;
-    req.on('data', (c) => { n += c.length; if (n > limit) { reject(new Error('Datei zu groß')); req.destroy(); } else chunks.push(c); });
+    req.on('data', (c) => { n += c.length; if (n > limit) { reject(new Error('File too large')); req.destroy(); } else chunks.push(c); });
     req.on('end', () => resolve(Buffer.concat(chunks)));
     req.on('error', reject);
   });
@@ -119,7 +119,7 @@ const fileOf = (id) => path.join(PROJ_DIR, id + '.json');
 const schemOf = (id) => path.join(SCHEM_DIR, id + '.litematic');
 const validId = (id) => /^[a-f0-9]{12}$/.test(id);
 const loadProject = (id) => { try { return migrate(JSON.parse(fs.readFileSync(fileOf(id), 'utf8'))); } catch { return null; } };
-// Früher gab es getrennte Zähler für Checkliste und Grundmaterialien, jetzt einen gemeinsamen Bestand
+// There used to be separate counters for the checklist and raw materials, now there is one shared stock
 function migrate(p) {
   if (!p.stock) {
     p.stock = {};
@@ -147,7 +147,7 @@ function summary(p) {
 function newProject(name, items, source) {
   const now = Date.now();
   return {
-    id: crypto.randomBytes(6).toString('hex'), name: name || 'Neues Projekt', created: now, updated: now,
+    id: crypto.randomBytes(6).toString('hex'), name: name || 'New project', created: now, updated: now,
     source: source || { type: 'manuell' }, items: MC.normalizeItems(items),
     stock: {}, stopItems: [], rawIncludeDone: false, notes: '',
   };
@@ -159,7 +159,7 @@ function itemsFromJson(data) {
   if (data && typeof data === 'object') {  // {id: count}
     return { name: '', items: Object.keys(data).filter((k) => typeof data[k] === 'number').map((id) => ({ id, count: data[id] })) };
   }
-  throw new Error('JSON-Format nicht erkannt (erwartet: {"name":…, "items":[{"id":…,"count":…}]})');
+  throw new Error('JSON format not recognized (expected: {"name":…, "items":[{"id":…,"count":…}]})');
 }
 
 async function handleApi(req, res, url) {
@@ -181,9 +181,9 @@ async function handleApi(req, res, url) {
 
   if (parts[1] === 'projects' && parts.length === 3) {
     const id = parts[2];
-    if (!validId(id)) return fail(res, 400, 'Ungültige ID');
+    if (!validId(id)) return fail(res, 400, 'Invalid ID');
     const p = loadProject(id);
-    if (!p) return fail(res, 404, 'Projekt nicht gefunden');
+    if (!p) return fail(res, 404, 'Project not found');
     if (m === 'GET') return send(res, 200, { ...p, has3d: fs.existsSync(schemOf(id)) });
     if (m === 'DELETE') { fs.unlinkSync(fileOf(id)); fs.rmSync(schemOf(id), { force: true }); return send(res, 200, { ok: true }); }
     if (m === 'PUT') {
@@ -203,18 +203,18 @@ async function handleApi(req, res, url) {
 
   if (parts[1] === 'projects' && parts.length === 4) {
     const id = parts[2];
-    if (!validId(id)) return fail(res, 400, 'Ungültige ID');
-    if (!fs.existsSync(fileOf(id))) return fail(res, 404, 'Projekt nicht gefunden');
-    // Blockpositionen für die 3D-Ansicht
+    if (!validId(id)) return fail(res, 400, 'Invalid ID');
+    if (!fs.existsSync(fileOf(id))) return fail(res, 404, 'Project not found');
+    // Block positions for the 3D view
     if (parts[3] === 'voxels' && m === 'GET') {
-      if (!fs.existsSync(schemOf(id))) return fail(res, 404, 'Zu diesem Projekt ist keine .litematic-Datei gespeichert');
+      if (!fs.existsSync(schemOf(id))) return fail(res, 404, 'No .litematic file is stored for this project');
       try { return sendGz(req, res, parseVoxels(fs.readFileSync(schemOf(id)))); }
       catch (e) { return fail(res, 422, e.message); }
     }
-    // .litematic nachträglich an ein bestehendes Projekt hängen (Liste und Fortschritt bleiben unverändert)
+    // Attach a .litematic to an existing project afterwards (list and progress stay unchanged)
     if (parts[3] === 'schematic' && m === 'POST') {
       const buf = await readBody(req);
-      try { parseVoxels(buf); } catch (e) { return fail(res, 422, 'Datei konnte nicht gelesen werden: ' + e.message); }
+      try { parseVoxels(buf); } catch (e) { return fail(res, 422, 'File could not be read: ' + e.message); }
       fs.writeFileSync(schemOf(id), buf);
       return send(res, 200, { ok: true });
     }
@@ -236,22 +236,22 @@ async function handleApi(req, res, url) {
         const nm = r.name && r.name !== 'Unnamed' ? r.name : base;
         p = newProject(nm, r.items, { type: 'json', filename });
       } else {
-        return fail(res, 400, 'Nur .litematic und .json werden unterstützt');
+        return fail(res, 400, 'Only .litematic and .json are supported');
       }
-      if (!p.items.length) return fail(res, 422, 'Keine Items in der Datei gefunden');
+      if (!p.items.length) return fail(res, 422, 'No items found in the file');
       saveProject(p);
       if (schem) fs.writeFileSync(schemOf(p.id), schem);
       return send(res, 201, summary(p));
     } catch (e) {
-      return fail(res, 422, `„${filename}“ konnte nicht gelesen werden: ${e.message}`);
+      return fail(res, 422, `"${filename}" could not be read: ${e.message}`);
     }
   }
 
   if (parts[1] === 'custom-recipes' && m === 'GET') return send(res, 200, customRecipes());
 
-  // Sync aus dem Spiel (Mod): Bestand aus Kisten/Inventar und bereits gesetzte Blöcke je Schematic
+  // Sync from the game (mod): stock from chests/inventory and blocks already placed per schematic
   if (parts[1] === 'sync' && m === 'POST') {
-    if (SYNC_TOKEN && !sameSecret(req.headers['x-sync-token'], SYNC_TOKEN)) return fail(res, 401, 'Falsches Sync-Token');
+    if (SYNC_TOKEN && !sameSecret(req.headers['x-sync-token'], SYNC_TOKEN)) return fail(res, 401, 'Wrong sync token');
     const b = JSON.parse((await readBody(req, 20e6)).toString() || '{}');
     const stock = b.stock && typeof b.stock === 'object' ? cleanCounts(b.stock) : null;
     const norm = (s) => String(s || '').toLowerCase().replace(/\.litematic$/, '').replace(/[\s_\-]+/g, ' ').trim();
@@ -267,11 +267,11 @@ async function handleApi(req, res, url) {
       for (const e of Array.isArray(pl.placed) ? pl.placed : []) {
         for (const [id, mult] of blockToItems(String(e.name), e.props || {})) placed[id] = (placed[id] || 0) + mult * (Number(e.count) || 0);
       }
-      // Bestand je Platzierung (markierte Kisten), sonst der gemeinsame
+      // Stock per placement (marked chests), otherwise the shared one
       const st = pl.stock && typeof pl.stock === 'object' ? cleanCounts(pl.stock) : stock;
       for (const p of hits) {
         const prev = p.sync || {};
-        // Handeinträge gelten, bis sich der Wert im Spiel ändert. Dann ist wieder das Spiel massgebend.
+        // Manual entries apply until the value in the game changes. Then the game is authoritative again.
         if (st && prev.stock) for (const k in p.stock) if ((st[k] || 0) !== (prev.stock[k] || 0)) delete p.stock[k];
         p.sync = { time: Date.now(), player: String(b.player || '').slice(0, 40), world: String(b.world || '').slice(0, 80), placement: String(pl.name || '').slice(0, 120),
           stock: st || prev.stock || {}, placed: Array.isArray(pl.placed) ? placed : prev.placed || {} };
@@ -283,7 +283,7 @@ async function handleApi(req, res, url) {
     }
     return send(res, 200, { ok: true, matched, unmatched });
   }
-  return fail(res, 404, 'Unbekannter Endpunkt');
+  return fail(res, 404, 'Unknown endpoint');
 }
 
 function serveStatic(req, res, url) {
@@ -302,7 +302,7 @@ http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   for (const k in SECURITY_HEADERS) res.setHeader(k, SECURITY_HEADERS[k]);
   try {
-    if (!requestAllowed(req)) return fail(res, 403, 'Anfrage von fremder Herkunft abgelehnt (siehe ALLOWED_HOSTS in der README)');
+    if (!requestAllowed(req)) return fail(res, 403, 'Request from foreign origin denied (see ALLOWED_HOSTS in the README)');
     if (url.pathname.startsWith('/api/')) return await handleApi(req, res, url);
     if (url.pathname.startsWith('/assets/')) return await serveAsset(req, res, url.pathname.slice(8));
     serveStatic(req, res, url);
@@ -310,4 +310,5 @@ http.createServer(async (req, res) => {
     console.error(e);
     if (!res.headersSent) fail(res, 500, e.message);
   }
-}).listen(PORT, () => console.log(`Minecraft Materialliste läuft auf http://localhost:${PORT}  (Daten: ${DATA})`));
+}).listen(PORT, () => console.log(`Materiallist-Litematica running at http://localhost:${PORT}  (data: ${DATA})`
+));

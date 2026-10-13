@@ -1,9 +1,9 @@
 services:
-  materialliste:
+  materiallist:
     build: .
-    container_name: mc-materialliste
+    container_name: mc-materiallist
     ports:
       - "3000:3000"
     volumes:
-      - ./data:/data        # Projekte + optionale recipes.custom.json
+      - ./data:/data        # projects + optional recipes.custom.json
     restart: unless-stopped

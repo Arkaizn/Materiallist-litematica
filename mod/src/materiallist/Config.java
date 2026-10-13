@@ -1,4 +1,4 @@
-package materialliste;
+package materiallist;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -8,21 +8,21 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Einstellungen des Servers, liegen in config/materialliste.json */
+/** Server settings, stored in config/materiallist.json */
 public class Config {
-    /** Port der Webseite */
+    /** Port of the website */
     public int port = 8177;
-    /** Adresse, auf der gelauscht wird. Im Singleplayer immer 127.0.0.1. */
+    /** Address to listen on. Always 127.0.0.1 in singleplayer. */
     public String bind = "0.0.0.0";
-    /** Adresse, unter der Spieler die Seite erreichen. Wird für den Login-Link benutzt, z.B. http://play.example.org:8177 */
+    /** Address players use to reach the site. Used for the login link, e.g. http://play.example.org:8177 */
     public String publicUrl = "";
-    /** Weitere Hostnamen, über die die Seite aufgerufen werden darf (der aus publicUrl ist automatisch erlaubt). "*" erlaubt alle. */
+    /** Additional hostnames the site may be accessed through (the one from publicUrl is allowed automatically). "*" allows all. */
     public List<String> allowedHosts = new ArrayList<>();
     public int maxUploadMb = 64;
     public int maxProjectsPerPlayer = 50;
-    /** Projekte automatisch anlegen, wenn ein Spieler mit Client-Mod eine Litematica-Platzierung aktiv hat */
+    /** Create projects automatically when a player with the client mod has an active Litematica placement */
     public boolean autoCreateFromLitematica = true;
-    /** Sekunden zwischen zwei Zählungen der Sammelkisten */
+    /** Seconds between two counts of the collection chests */
     public int syncSeconds = 5;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
@@ -31,7 +31,8 @@ public class Config {
         Config c = new Config();
         try {
             if (Files.exists(file)) { Config r = GSON.fromJson(Files.readString(file), Config.class); if (r != null) c = r; }
-        } catch (Exception e) { System.err.println("[materialliste] config/materialliste.json ist nicht lesbar, es gelten die Standardwerte: " + e); return c; }
+        } catch (Exception e) { System.err.println("[materiallist] config/materiallist.json is not readable, using the defaults: " + e)
+; return c; }
         if (c.allowedHosts == null) c.allowedHosts = new ArrayList<>();
         if (c.bind == null || c.bind.isBlank()) c.bind = "0.0.0.0";
         if (c.publicUrl == null) c.publicUrl = "";

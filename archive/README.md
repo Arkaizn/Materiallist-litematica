@@ -1,5 +1,5 @@
-# Archiv
+# Archive
 
-`docker-version/` ist die alte Node/Docker-Variante der Materialliste. Sie wird nicht mehr gebraucht: Die Seite läuft jetzt direkt aus der Mod (`mod/`).
+`docker-version/` is the old Node/Docker variant of Materiallist-Litematica (then called "Materialliste"). It is no longer needed: the site now runs straight from the mod (`mod/`).
 
-In `docker-version/data/` liegen noch die Projekte und Schematics von damals. Für den Umzug `data/projects/` und `data/schematics/` in den Ordner `materialliste/` des Minecraft-Servers kopieren. Wenn das erledigt ist, kann der ganze Ordner `archive/` gelöscht werden.
+`docker-version/data/` still contains the projects and schematics from back then. To migrate, copy `data/projects/` and `data/schematics/` into the `materiallist/` folder of the Minecraft server. Once that's done, the whole `archive/` folder can be deleted.

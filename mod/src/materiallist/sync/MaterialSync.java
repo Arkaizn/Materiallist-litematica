@@ -1,4 +1,4 @@
-package materialliste.sync;
+package materiallist.sync;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -6,7 +6,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
-import materialliste.Net;
+import materiallist.Net;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -36,19 +36,20 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Client-Teil (optional): meldet dem Server die aktiven Litematica-Platzierungen samt Baufortschritt, lädt unbekannte Schematics hoch
- * und zeigt im Kistenfenster einen Knopf für Sammelkisten. Ohne Materialliste auf dem Server macht er nichts.
+ * Client part (optional): reports the active Litematica placements and build progress to the server, uploads unknown schematics
+ * and shows a button for collection chests in the chest screen. Does nothing if the server doesn't run Materiallist.
  */
 public class MaterialSync implements ClientModInitializer {
     static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final long MAX_FILE = 64L << 20;
 
-    private final Path dir = FabricLoader.getInstance().getConfigDir().resolve("materialliste-sync");
+    private final Path dir = FabricLoader.getInstance().getConfigDir().resolve("materiallist-sync");
+    private final Path oldDir = FabricLoader.getInstance().getConfigDir().resolve("materialliste-sync");   // before the rename
     private final boolean litematica = FabricLoader.getInstance().isModLoaded("litematica");
 
     private String worldId;
     private Map<String, LitematicaBridge.Cache> placements = new HashMap<>();
-    private Map<String, String> marks = new HashMap<>();   // "x,y,z" -> Platzierung (nur für die Beschriftung des Knopfs)
+    private Map<String, String> marks = new HashMap<>();   // "x,y,z" -> placement (only for the button label)
     private boolean dirty;
     private Screen lastScreen;
     private BlockPos openPos, lastHit;
@@ -67,7 +68,7 @@ public class MaterialSync implements ClientModInitializer {
     }
 
     private static boolean connected() { return ClientPlayNetworking.canSend(Net.ToServer.TYPE); }
-    private void warn(String what, Throwable t) { if (warned.put(what + t, true) == null) { System.err.println("[materialliste] " + what + ": " + t); t.printStackTrace(); } }
+    private void warn(String what, Throwable t) { if (warned.put(what + t, true) == null) { System.err.println("[materiallist] " + what + ": " + t); t.printStackTrace(); } }
 
     private void onTick(Minecraft mc) {
         try {
@@ -80,10 +81,10 @@ public class MaterialSync implements ClientModInitializer {
                 openPos = null; lastScreen = null;
             }
             tick++;
-            for (int i = 0; i < 2 && !queue.isEmpty(); i++) ClientPlayNetworking.send(queue.poll());   // Datei-Upload in kleinen Portionen
+            for (int i = 0; i < 2 && !queue.isEmpty(); i++) ClientPlayNetworking.send(queue.poll());   // file upload in small portions
             if (tick % 200 == 0 && dirty) saveWorld();
             if (tick % 100 == 0 && litematica && connected()) sendState(mc);
-        } catch (Throwable t) { warn("Fehler im Tick", t); }
+        } catch (Throwable t) { warn("Error in tick", t); }
     }
 
     private void enterWorld(Minecraft mc) {
@@ -92,13 +93,14 @@ public class MaterialSync implements ClientModInitializer {
         worldId = id.replaceAll("[^A-Za-z0-9._-]", "_");
         placements = new HashMap<>(); marks = new HashMap<>();
         try {
+            if (Files.isDirectory(oldDir) && !Files.exists(dir)) Files.move(oldDir, dir);
             Path f = dir.resolve(worldId + ".json");
             if (Files.exists(f)) {
                 JsonObject o = GSON.fromJson(Files.readString(f), JsonObject.class);
                 if (o.has("placements")) placements = GSON.fromJson(o.get("placements"), new TypeToken<HashMap<String, LitematicaBridge.Cache>>() { }.getType());
                 if (o.has("chests")) marks = GSON.fromJson(o.get("chests"), new TypeToken<HashMap<String, String>>() { }.getType());
             }
-        } catch (Exception e) { System.err.println("[materialliste] Gespeicherter Stand nicht lesbar: " + e); }
+        } catch (Exception e) { System.err.println("[materiallist] Saved state is not readable: " + e); }
         if (placements == null) placements = new HashMap<>();
         if (marks == null) marks = new HashMap<>();
         lastBody = ""; tick = 0; dirty = false; queue.clear();
@@ -119,19 +121,19 @@ public class MaterialSync implements ClientModInitializer {
             o.add("chests", GSON.toJsonTree(marks));
             Files.writeString(dir.resolve(worldId + ".json"), GSON.toJson(o));
             dirty = false;
-        } catch (Exception e) { System.err.println("[materialliste] Speichern fehlgeschlagen: " + e); }
+        } catch (Exception e) { System.err.println("[materiallist] Saving failed: " + e); }
     }
 
     /* ---------- Litematica -> Server ---------- */
     private void sendState(Minecraft mc) {
         JsonArray pl = new JsonArray();
-        try { if (LitematicaBridge.scan(mc, placements, pl)) dirty = true; } catch (Throwable t) { warn("Litematica-Abgleich fehlgeschlagen", t); return; }
+        try { if (LitematicaBridge.scan(mc, placements, pl)) dirty = true; } catch (Throwable t) { warn("Litematica sync failed", t); return; }
         if (pl.size() == 0) return;
         String all = new Gson().toJson(pl);
         long now = System.currentTimeMillis();
         if (all.equals(lastBody) && now - lastSent < 60_000) return;
         lastBody = all; lastSent = now;
-        for (JsonElement e : pl) {   // jede Platzierung einzeln, damit ein Paket nie zu gross wird
+        for (JsonElement e : pl) {   // each placement separately so a packet never gets too big
             JsonObject body = new JsonObject();
             JsonArray one = new JsonArray();
             one.add(e);
@@ -161,10 +163,10 @@ public class MaterialSync implements ClientModInitializer {
                 System.arraycopy(part, 0, data, 4 + head.length, part.length);
                 queue.add(new Net.ToServer("file", data));
             }
-        } catch (Throwable t) { warn("Schematic konnte nicht gesendet werden", t); }
+        } catch (Throwable t) { warn("Schematic could not be sent", t); }
     }
 
-    /* ---------- Knopf im Kistenfenster ---------- */
+    /* ---------- Button in the chest screen ---------- */
     private void addButton(Minecraft mc, Screen screen, int width, int height) {
         try {
             if (mc.player == null || mc.level == null || !litematica || !connected()) return;
@@ -189,16 +191,17 @@ public class MaterialSync implements ClientModInitializer {
                 ClientPlayNetworking.send(new Net.ToServer("mark", new Gson().toJson(o).getBytes(StandardCharsets.UTF_8)));
                 b.setMessage(Component.literal(label(key)));
             }).bounds(width / 2 - 88, 2, 176, 18)
-              .tooltip(Tooltip.create(Component.literal("Klicken, um auszuwählen, für welche Litematica-Platzierung in dieser Kiste Material gesammelt wird. Nur Sammelkisten zählen für die Materialliste.")))
+              .tooltip(Tooltip.create(Component.literal("Click to choose which Litematica placement this chest collects material for. Only collection chests count for Materiallist.")))
               .build();
             Screens.getWidgets(screen).add(button);
-        } catch (Throwable t) { warn("Knopf konnte nicht angezeigt werden", t); }
+        } catch (Throwable t) { warn("Button could not be shown", t); }
     }
 
     private String label(String key) {
         String m = marks.get(key);
-        if (m == null) return "Materialliste: zählt nicht";
+        if (m == null) return "Materiallist: not counted";
         String name = m.contains("|") ? m.substring(0, m.indexOf('|')) : m;
-        return "§aSammelkiste: " + (name.length() > 20 ? name.substring(0, 19) + "…" : name);
+        return "§aCollection chest: " +
+ (name.length() > 20 ? name.substring(0, 19) + "…" : name);
     }
 }

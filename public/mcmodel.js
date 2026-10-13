@@ -1,4 +1,4 @@
-/* Minecraft-Assets für Icons und 3D-Ansicht: Texturatlas, Blockstates und Modelle -> fertige Quads */
+/* Minecraft assets for icons and the 3D view: texture atlas, blockstates and models -> ready-made quads */
 (function (root) {
   'use strict';
 
@@ -11,7 +11,7 @@
   const texCache = new Map();
   const modelCache = new Map();
 
-  // Blöcke ohne sichtbares Modell
+  // Blocks without a visible model
   const NO_RENDER = new Set(['air', 'cave_air', 'void_air', 'water', 'lava', 'bubble_column', 'moving_piston', 'light',
     'barrier', 'structure_void', 'nether_portal', 'end_portal', 'end_gateway', 'fire', 'soul_fire']);
 
@@ -33,13 +33,13 @@
       pix = c.getContext('2d', { willReadFrequently: true });
       pix.drawImage(img, 0, 0);
     } catch (e) {
-      console.warn('Minecraft-Assets nicht verfügbar, es werden Platzhalter benutzt:', e.message);
+      console.warn('Minecraft assets not available, using placeholders:', e.message);
       A.img = whiteCanvas();
     }
     return A.ok;
   }
 
-  /** Textur im Atlas. alpha: 0 = deckend, 1 = Löcher (cutout), 2 = durchscheinend */
+  /** Texture in the atlas. alpha: 0 = opaque, 1 = holes (cutout), 2 = translucent */
   function tex(name) {
     if (!A.ok) return { x: 0, y: 0, w: 16, h: 16, alpha: 0 };
     name = strip(name);
@@ -47,7 +47,7 @@
     const r = A.atlas[name];
     let t = null;
     if (r) {
-      // animierte Texturen: nur das erste Bild
+      // animated textures: only the first frame
       const h = /^(block|item)\//.test(name) && r[3] > r[2] && r[3] % r[2] === 0 ? r[2] : r[3];
       t = { x: r[0], y: r[1], w: r[2], h, alpha: 0 };
       const d = pix.getImageData(t.x, t.y, t.w, t.h).data;
@@ -59,7 +59,7 @@
     return t;
   }
 
-  /** Modell samt Eltern auflösen */
+  /** Resolve a model including its parents */
   function model(id) {
     id = strip(id);
     if (modelCache.has(id)) return modelCache.get(id);
@@ -92,7 +92,7 @@
     return null;
   }
 
-  /* ---------- Geometrie ---------- */
+  /* ---------- Geometry ---------- */
   function rotAxis(p, axis, deg, o) {
     const a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
     const x = p[0] - o[0], y = p[1] - o[1], z = p[2] - o[2];
@@ -120,7 +120,7 @@
       if (r.z) rotAxis(p, 'z', r.z, o);
     }
   }
-  // Ecken je Seite: oben links, unten links, unten rechts, oben rechts (von aussen gesehen)
+  // Corners per face: top left, bottom left, bottom right, top right (seen from outside)
   function faceVerts(d, a, b) {
     const [x1, y1, z1] = a, [x2, y2, z2] = b;
     switch (d) {
@@ -167,7 +167,7 @@
     return [f(0), f(8), f(4)];
   }
 
-  /** Elemente -> Quads (Koordinaten in Blockeinheiten 0..1, UV in Atlas-Pixeln) */
+  /** Elements -> quads (coordinates in block units 0..1, UV in atlas pixels) */
   function bake(elements, textures, o, out) {
     const rot = o.rot && (o.rot.x || o.rot.y || o.rot.z) ? o.rot : null;
     const off = o.offset;
@@ -190,7 +190,7 @@
           if (rot) rotVariant(v, rot);
           for (let k = 0; k < 3; k++) p[i * 3 + k] = (v[k] + (off ? off[k] : 0)) / 16;
           const c = cs[(i + r) % 4];
-          // minimal zur Mitte ziehen, damit keine Nachbartextur durchblutet
+          // pull slightly toward the center so no neighboring texture bleeds through
           u[i * 2] = t.x + (c[0] + (cu - c[0]) * 0.004) / 16 * t.w;
           u[i * 2 + 1] = t.y + (c[1] + (cv - c[1]) * 0.004) / 16 * t.h;
         }
@@ -217,7 +217,7 @@
     return [{ from: a || [0, 0, 0], to: b || [16, 16, 16], faces }];
   };
 
-  // Truhen werden im Spiel als Entity gezeichnet -> eigenes Modell aus der Entity-Textur (Vorderseite = Norden)
+  // Chests are drawn as entities in the game -> custom model from the entity texture (front = north)
   function chestTexture(name) {
     name = name.replace(/^waxed_/, '');
     let m;
@@ -245,7 +245,7 @@
         up: { uv: q(1, 0, 3, 1), texture: T }, down: { uv: q(3, 0, 5, 1), texture: T } } },
     ];
   }
-  // Ersatzformen für Blöcke, die im Spiel kein normales Modell haben (Schilder, Banner, Köpfe …)
+  // Stand-in shapes for blocks that have no normal model in the game (signs, banners, heads …)
   function fallbackElements(name, m) {
     const pt = texRef(m.textures.particle, m.textures);
     if (!pt || !tex(pt)) return null;
@@ -257,7 +257,7 @@
   }
 
   const WOOD = /^(stripped_)?(.+?)_(planks|log|wood|stem|hyphae|trapdoor|door|slab|stairs|sign|wall_sign|hanging_sign|wall_hanging_sign|shelf|fence_gate|fence|button|pressure_plate|leaves|sapling|boat|chest_boat)$/;
-  /** Unbekannte Holzart (Mod / Datapack) -> Eichen-Variante als Platzhalter */
+  /** Unknown wood type (mod / datapack) -> oak variant as a placeholder */
   function standIn(id, has) {
     const m = id.match(WOOD);
     if (!m) return null;
@@ -275,7 +275,7 @@
 
   const FACING_Y = { north: 0, east: 90, south: 180, west: 270 };
 
-  /** Block-State -> { quads, occl (verdeckt Nachbarn komplett), self (voller Würfel) } */
+  /** Block state -> { quads, occl (fully hides neighbors), self (full cube) } */
   function blockQuads(fullName, props) {
     props = props || {};
     let name = strip(fullName);
@@ -342,10 +342,11 @@
     }
   }
   const ALIAS = { '#planks': 'oak_planks', '#logs': 'oak_log' };
-  // Items, die in neueren Versionen anders heissen
+  // Items that have different names in newer versions
   const RENAMED = { chain: 'iron_chain', iron_chain: 'chain', grass: 'short_grass', short_grass: 'grass', scute: 'turtle_scute' };
 
-  /** Item -> { flat: [texturen] } oder { quads, gui }, null wenn unbekannt */
+  /** Item -> { flat: [textures] } or { quads, gui }, null if unknown */
+
   function itemIcon(rawId) {
     if (!A.ok) return null;
     let id = ALIAS[rawId] || strip(rawId);
