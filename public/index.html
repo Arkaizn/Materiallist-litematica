@@ -205,9 +205,11 @@ const SHULKER = 27;
 const S = {
   me: null, projects: [], current: null, combo: new Set(), view: 'list', custom: {},
   filter: '', hideDone: false, rawShowDone: false, refresh: 5, groupCat: true, sort: 'count', open: new Set(),
+  order: 'asap', focus: {},   // Next steps: order strategy, and per project the goal to work on first
 };
 try { Object.assign(S, JSON.parse(localStorage.getItem('mcml-ui') || '{}'), { projects: [], current: null, open: new Set() }); S.combo = new Set(S.combo || []); } catch { S.combo = new Set(); }
-function saveUi() { try { localStorage.setItem('mcml-ui', JSON.stringify({ view: S.view, refresh: S.refresh, rawShowDone: S.rawShowDone, hideDone: S.hideDone, groupCat: S.groupCat, sort: S.sort, combo: [...S.combo], lastId: S.current && S.current.id })); } catch {} }
+if (!S.focus || typeof S.focus !== 'object') S.focus = {};
+function saveUi() { try { localStorage.setItem('mcml-ui', JSON.stringify({ view: S.view, refresh: S.refresh, rawShowDone: S.rawShowDone, hideDone: S.hideDone, groupCat: S.groupCat, sort: S.sort, combo: [...S.combo], order: S.order, focus: S.focus, lastId: S.current && S.current.id })); } catch {} }
 
 async function api(path, opts) {
   const r = await fetch('/api' + path, opts);
@@ -542,7 +544,7 @@ function drawRows() {
       const canTree = MC.hasRecipe(i.id, { custom: S.custom });
       html += `<tr class="item ${done ? 'done' : ''}" data-id="${esc(i.id)}" data-need="${i.count - built}">
         <td><input type="checkbox" class="chk" data-act="toggle" ${done ? 'checked' : ''} ${p.combo ? 'disabled' : ''} aria-label="Done"></td>
-        <td><div class="iname">${icon(i.id)}<span>${esc(MC.displayName(i.id))}</span>${isStop ? '<span class="pill raw" title="Not broken down any further">Raw material</span>' : ''}</div></td>
+        <td><div class="iname">${icon(i.id)}<span>${esc(MC.displayName(i.id))}</span>${isStop ? '<span class="pill raw" title="You get this another way, it is not crafted">Get elsewhere</span>' : ''}</div></td>
         <td class="num"><b>${fmt(i.count)}</b>${built ? `<div class="sub2">${fmt(built)} placed</div>` : ''}</td>
         <td class="hide-m">${stackText(i.id, i.count)}</td>
         <td class="hide-m">${shulkerText(i.id, i.count)}</td>
@@ -564,7 +566,7 @@ function treeHtml(id, count, p) {
   };
   const stop = (p.stopItems || []).includes(id);
   return `<div class="tree"><ul>${node(t, true)}</ul>
-    ${p.combo ? '' : `<div style="margin-top:8px"><label style="color:var(--muted);font-size:12.5px;display:inline-flex;gap:6px;align-items:center"><input type="checkbox" class="chk" data-act="stop" data-item="${esc(id)}" ${stop ? 'checked' : ''}> Don't break down in the raw materials view (treat as raw material)</label></div>`}</div>`;
+    ${p.combo ? '' : `<div style="margin-top:8px"><label style="color:var(--muted);font-size:12.5px;display:inline-flex;gap:6px;align-items:center"><input type="checkbox" class="chk" data-act="stop" data-item="${esc(id)}" ${stop ? 'checked' : ''}> Don't craft this – I get it another way (not broken down, listed at the very end of Next steps)</label></div>`}</div>`;
 }
 // All rows with data-id (checklist, next steps, raw materials) share these actions
 document.addEventListener('change', (e) => {
@@ -592,6 +594,7 @@ document.addEventListener('click', (e) => {
   if (!row) return;
   const id = row.dataset.id, act = b.dataset.act;
   if (act === 'tree') { S.open.has(id) ? S.open.delete(id) : S.open.add(id); drawRows(); }
+  if (act === 'focus') { if (S.focus[p.id] === id) delete S.focus[p.id]; else S.focus[p.id] = id; saveUi(); return renderNext(); }
   if (p.combo) return;
   if (act === 'stack') { setStock(p, id, (p.stock[id] != null ? p.stock[id] : stockOf(p)[id] || 0) + MC.stackSize(id)); rerender(); }
   if (act === 'unpin') { delete p.stock[id]; touch(p); persist(); rerender(); }
@@ -614,11 +617,15 @@ function applyPlan(pool, pl, rootId, credit = true) {
  * One goal per final product: which raw materials it needs in total and which crafting steps in which order.
  * Stock is distributed in turn: first to everything that can be completed with it.
  */
-function goalsOf(p) {
+function goalsOf(p, first = S.focus[p.id]) {
   const st = stockOf(p), dem = MC.demandOf(p), opts = resolveOpts(p);
   const pool = Object.assign({}, st);
   const goals = [];
   const todo = p.items.filter((i) => dem[i.id] > 0).map((i) => ({ id: i.id, count: i.count, need: dem[i.id] }));
+  // The focused goal gets the stock first
+  const fi = todo.findIndex((g) => g.id === first);
+  if (fi > 0) todo.unshift(...todo.splice(fi, 1));
+
   const make = (g, ready) => {
     const pl = MC.plan({ [g.id]: g.need }, pool, opts), N = pl.nodes;
     if (ready && pl.gather.length) return false;
@@ -635,7 +642,9 @@ function goalsOf(p) {
     goals.push(g);
     return true;
   };
+  if (fi >= 0) make(todo.shift(), false);   // the focused goal comes first even if material is still missing
   const rest = todo.filter((g) => !make(g, true));
+
   rest.forEach((g) => make(g, false));
   return goals;
 }
@@ -651,37 +660,78 @@ function doCraft(p, id) {
   touch(p); persist();
   toast(`${fmt(pl.nodes[id].produced)}× ${MC.displayName(id)} booked`);
 }
+const ORDERS = [
+  ['asap', 'Craft as soon as possible', 'As soon as everything for an item is there, craft it. Otherwise gather what is missing most.'],
+  ['gather', 'Gather everything first', 'Gather all raw materials for the whole project first, then do all the crafting.'],
+  ['single', 'One item at a time', 'Work through the list item by item: gather what this item needs, craft it, then go to the next one.'],
+];
 function renderNext() {
   const p = S.current, pl = planOf(p), N = pl.nodes, st = stockOf(p);
-  const goals = goalsOf(p);
+  const stop = new Set(p.stopItems || []);
+  const order = ORDERS.some(([k]) => k === S.order) ? S.order : 'asap';
+  const focus = S.focus[p.id];
+  let goals = goalsOf(p);
   const own = (id) => st[id] || 0;
   const amount = (id, n) => `${fmt(n)}${n >= MC.stackSize(id) ? ` <span class="sub2" style="display:inline">(${stackText(id, n).replace(/<\/?span[^>]*>/g, '')})</span>` : ''}`;
-  const ready = goals.filter((g) => g.state === 'ready'), wait = goals.filter((g) => g.state === 'wait'), have = goals.filter((g) => g.state === 'have');
+  // Items marked "get elsewhere" are not part of the plan: they only show up at the very end
+  const notStopped = (gs) => gs.filter((g) => !stop.has(g.id));
+  const active = notStopped(goals);
+  const gather = pl.gather.filter((id) => !stop.has(id)), elsewhere = pl.gather.filter((id) => stop.has(id));
   const left = Object.values(MC.demandOf(p)).reduce((a, b) => a + b, 0);
+  const missingFor = (g) => g.raw ? [] : g.raws.filter((n) => n.missing > 0 && !stop.has(n.id)).sort((a, b) => b.missing - a.missing);
+  // One item at a time: the focused item, otherwise the first unfinished one in the list
+  const listPos = (g) => (g.id === focus ? -1 : p.items.findIndex((i) => i.id === g.id));
+  let current = order === 'single' ? active.filter((g) => g.state !== 'have').sort((a, b) => listPos(a) - listPos(b))[0] : null;
+  // The current item gets the stock first
+  if (current && current.id !== focus) { goals = goalsOf(p, current.id); current = goals.find((g) => g.id === current.id); }
+
+  const ready = notStopped(goals).filter((g) => g.state === 'ready'), wait = notStopped(goals).filter((g) => g.state === 'wait'), have = goals.filter((g) => g.state === 'have');
+  const focused = ready.concat(wait).find((g) => g.id === focus);
+
 
   // At the top: exactly one step
-  let hero, heroId = null, heroCls = 'craft';
-  if (ready.length) { const g = ready[0]; heroId = g.id; hero = `<div class="hero-t">Craft: ${fmt(g.left)}× ${esc(MC.displayName(g.id))}</div><div class="hero-s">You have all the material for it${ready.length > 1 ? `, and for ${ready.length - 1} more (see below)` : ''}.</div>`; }
-  else if (pl.gather.length) { const id = pl.gather[0]; heroId = id; heroCls = 'gather'; hero = `<div class="hero-t">Gather: ${esc(MC.displayName(id))}</div><div class="hero-s">${amount(id, N[id].missing)} more · have ${fmt(N[id].have)} of ${fmt(N[id].need)}</div>`; }
-  else if (left) hero = `<div class="hero-t">All materials are here – time to build</div><div class="hero-s">${fmt(left)} blocks left to place.</div>`;
-  else hero = '<div class="hero-t">Done 🎉</div><div class="hero-s">Everything is placed.</div>';
+  let hero = '', heroId = null, heroCls = 'craft', heroGoal = null;
+  const craftHero = (g) => { heroGoal = g; heroId = g.id; hero = `<div class="hero-t">Craft: ${fmt(g.left)}× ${esc(MC.displayName(g.id))}</div><div class="hero-s">You have all the material for it${order !== 'single' && ready.length > 1 ? `, and for ${ready.length - 1} more (see below)` : ''}.</div>`; };
+  const gatherHero = (id, n, forGoal) => { heroId = id; heroCls = 'gather'; hero = `<div class="hero-t">Gather: ${esc(MC.displayName(id))}</div><div class="hero-s">${amount(id, n)} more${forGoal ? ` for ${esc(MC.displayName(forGoal.id))}` : ` · have ${fmt(N[id].have)} of ${fmt(N[id].need)}`}</div>`; };
+  const goalHero = (g) => {
+    if (g.state === 'ready') return craftHero(g);
+    heroGoal = g;
+    if (g.raw) return gatherHero(g.id, g.left, null);
+    const m = missingFor(g);
+    if (m.length) return gatherHero(m[0].id, m[0].missing, g);
+    const ext = g.raws.find((n) => n.missing > 0);
+    heroCls = 'gather'; heroId = ext ? ext.id : g.id;
+    hero = `<div class="hero-t">Get elsewhere: ${esc(MC.displayName(heroId))}</div><div class="hero-s">${ext ? `${fmt(ext.missing)} more for ${esc(MC.displayName(g.id))}` : ''}</div>`;
+  };
+  if (current) goalHero(current);
+  else if (order === 'gather' && gather.length) gatherHero(gather[0], N[gather[0]].missing, null);
+  else if (focused) goalHero(focused);
+  else if (ready.length) craftHero(ready[0]);
+  else if (gather.length) gatherHero(gather[0], N[gather[0]].missing, null);
+  if (!hero) {
+    if (elsewhere.length) { heroId = elsewhere[0]; heroCls = 'gather'; hero = `<div class="hero-t">Get elsewhere: ${esc(MC.displayName(heroId))}</div><div class="hero-s">${amount(heroId, N[heroId].missing)} more · everything else is done</div>`; }
+    else if (left) hero = `<div class="hero-t">All materials are here – time to build</div><div class="hero-s">${fmt(left)} blocks left to place.</div>`;
+    else hero = '<div class="hero-t">Done 🎉</div><div class="hero-s">Everything is placed.</div>';
+  }
 
   const chk = (id, done) => (p.combo ? '' : `<input type="checkbox" class="chk" data-act="toggle" ${done ? 'checked' : ''} title="${done ? 'Not actually there' : 'I already have it (without subtracting ingredients)'}">`);
   // One card per final product: what you need in total and how to craft it
   const card = (g) => {
-    const raws = g.raws.map((n) => `<span class="chip ${n.missing ? 'no' : 'ok'}">${icon(n.id)} ${fmt(n.need)} ${esc(MC.displayName(n.id))}${n.missing ? ` · missing ${fmt(n.missing)}` : ' ✓'}</span>`).join('');
+    const raws = g.raws.map((n) => `<span class="chip ${n.missing ? 'no' : 'ok'}"${stop.has(n.id) ? ' title="Get elsewhere"' : ''}>${icon(n.id)} ${fmt(n.need)} ${esc(MC.displayName(n.id))}${n.missing ? ` · missing ${fmt(n.missing)}` : ' ✓'}</span>`).join('');
     const steps = g.steps.map((n) => `<li><b>${fmt(n.produced)}× ${esc(MC.displayName(n.id))}</b> <span class="sub2" style="display:inline">${esc(n.recipe.via || 'craft')} from ${Object.entries(n.recipe.in).map(([k, v]) => `${fmt(v * n.crafts)} ${esc(MC.displayName(k))}`).join(', ')}</span></li>`).join('');
     const status = g.state === 'ready' ? '<span class="pill next">ready to craft</span>' : g.state === 'have' ? '<span class="pill next">available, ready to place</span>' : '<span class="pill">material missing</span>';
+    const isFocus = g.id === focus;
+    const focusBtn = g.state === 'have' || stop.has(g.id) ? '' : `<button class="ghost" data-act="focus" style="padding:2px 8px;font-size:12px;${isFocus ? 'color:var(--accent)' : ''}" title="${isFocus ? 'Stop focusing on this item' : 'Work on this item first: it gets your stock first and decides the next step'}">${isFocus ? '★ Focused' : '☆ Do next'}</button>`;
     const body = g.state === 'have' ? ''
-      : g.raw ? `<div class="goal-need">This is a raw material: just gather it. Have ${fmt(g.have)} of ${fmt(g.need)}.</div>`
+      : g.raw ? `<div class="goal-need">${stop.has(g.id) ? 'You get this another way.' : 'This is a raw material: just gather it.'} Have ${fmt(g.have)} of ${fmt(g.need)}.</div>`
       : `<div class="goal-need"><span class="lbl">You need in total</span>${raws || '<span class="sub2">only what you already have</span>'}</div>
-         <details ${g.state === 'ready' ? 'open' : ''}><summary>${g.steps.length} crafting step${g.steps.length === 1 ? '' : 's'} in this order</summary><ol class="goal-steps">${steps}</ol></details>`;
+         <details ${g.state === 'ready' || g === heroGoal ? 'open' : ''}><summary>${g.steps.length} crafting step${g.steps.length === 1 ? '' : 's'} in this order</summary><ol class="goal-steps">${steps}</ol></details>`;
     return `<div class="goal ${g.state}" data-id="${esc(g.id)}" data-need="${g.need}">
       <div class="goal-h">${chk(g.id, g.state === 'have')}${icon(g.id)}<b>${fmt(g.state === 'have' ? g.need : g.left)}× ${esc(MC.displayName(g.id))}</b>${g.have && g.left ? `<span class="sub2">${fmt(g.have)} of ${fmt(g.need)} already there</span>` : ''}${status}
-        ${g.state === 'ready' && !p.combo && !p.sync ? '<button class="primary" data-act="craft" style="margin-left:auto" title="Subtract ingredients and credit the result">Crafted</button>' : ''}</div>${body}</div>`;
+        <span style="margin-left:auto;display:flex;gap:6px;align-items:center">${focusBtn}${g.state === 'ready' && !p.combo && !p.sync ? '<button class="primary" data-act="craft" title="Subtract ingredients and credit the result">Crafted</button>' : ''}</span></div>${body}</div>`;
   };
-  const rawRow = (id, i) => {
-    const nd = N[id], done = nd.missing === 0, next = !done && i === 0 && heroCls === 'gather';
+  const rawRow = (id) => {
+    const nd = N[id], done = nd.missing === 0, next = !done && id === heroId && heroCls === 'gather';
     const uses = goals.filter((g) => g.plan.nodes[id] && g.plan.nodes[id].need > 0 && g.id !== id).map((g) => esc(MC.displayName(g.id)));
     return `<tr class="item ${done ? 'done' : ''}${next ? ' nextup' : ''}" data-id="${esc(id)}" data-need="${own(id) + nd.missing}">
       <td style="width:34px">${chk(id, done)}</td>
@@ -690,16 +740,24 @@ function renderNext() {
       <td class="num">${haveCell(p, id, own(id))}${nd.have > own(id) ? `<div class="sub2">+ ${fmt(nd.have - own(id))} matching in stock</div>` : ''}</td>
       <td class="num" style="width:120px">${done ? '<span style="color:var(--accent)">✓</span>' : amount(id, nd.missing)}</td></tr>`;
   };
+  const rawTable = (ids) => `<table><thead><tr><th></th><th>Raw material</th><th class="num">Needed</th><th class="num">Have</th><th class="num">Missing</th></tr></thead><tbody>${ids.map(rawRow).join('')}</tbody></table>`;
   const doneRaw = pl.done.filter((id) => !N[id].recipe);
   const sec = (title, hint, html) => (html ? `<h3 class="sec">${title} <small>${hint}</small></h3>${html}` : '');
+  const skip = current || null;
+  const craftSec = sec('Craft now', 'All material for these final products is here', ready.filter((g) => g !== skip).map(card).join(''));
+  const gatherSec = sec('Gather', `${gather.length} raw materials still missing, totaled for everything`, gather.length ? rawTable(gather) : '');
   $('#content').innerHTML = `
+    <div class="toolbar"><label>Order <select id="order">${ORDERS.map(([k, l]) => `<option value="${k}" ${k === order ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      <span class="sub2">${ORDERS.find(([k]) => k === order)[2]}</span></div>
     <div class="hero ${heroCls}"><div class="hero-k">Next step</div><div class="hero-row">${heroId ? icon(heroId) : ''}<div>${hero}</div></div></div>
     ${syncLine(p)}
-    ${sec('Craft now', 'All material for these final products is here', ready.map(card).join(''))}
-    ${sec('Gather', `${pl.gather.length} raw materials still missing, totaled for everything`, pl.gather.length ? `<table><thead><tr><th></th><th>Raw material</th><th class="num">Needed</th><th class="num">Have</th><th class="num">Missing</th></tr></thead><tbody>${pl.gather.map(rawRow).join('')}</tbody></table>` : '')}
-    ${sec('Craft afterwards', 'Material is still missing here (red)', wait.map(card).join(''))}
+    ${current ? sec('Current item', focus === current.id ? 'focused' : 'first unfinished item in the list – use ☆ Do next to pick another one', card(current)) : ''}
+    ${order === 'gather' ? gatherSec + craftSec : craftSec + gatherSec}
+    ${sec('Craft afterwards', 'Material is still missing here (red)', wait.filter((g) => g !== skip).map(card).join(''))}
+    ${sec('Get elsewhere', 'Marked as "don\'t craft" in the checklist – not part of the plan above', elsewhere.length ? rawTable(elsewhere) : '')}
     ${have.length || doneRaw.length ? `<details class="donebox"><summary>Done (${have.length} final products ready to place, ${doneRaw.length} raw materials complete)</summary>${have.map(card).join('')}${doneRaw.length ? `<table><tbody>${doneRaw.map(rawRow).join('')}</tbody></table>` : ''}</details>` : ''}
-    <p class="note" style="margin-top:18px">Each card is a final product from your list, with everything you need for it in total and the crafting steps to get there. Intermediate products (sticks, planks, torches …) only show up there as steps. The checkmark means "I already have it". "Crafted" subtracts the ingredients of the whole chain and credits the result.</p>`;
+    <p class="note" style="margin-top:18px">Each card is a final product from your list, with everything you need for it in total and the crafting steps to get there. Intermediate products (sticks, planks, torches …) only show up there as steps. The checkmark means "I already have it". "Crafted" subtracts the ingredients of the whole chain and credits the result. "☆ Do next" puts an item first: it gets your stock first and decides the next step. Items marked "don't craft" in the checklist (▸) are listed under "Get elsewhere" at the end.</p>`;
+  $('#order').onchange = (e) => { S.order = e.target.value; saveUi(); renderNext(); };
   bindSync(p);
 }
 
@@ -724,13 +782,13 @@ function renderRaw() {
       <label><input type="checkbox" class="chk" id="rsd" ${S.rawShowDone ? 'checked' : ''}> Show completed${hidden ? ` (${hidden})` : ''}</label>
       <button class="ghost" id="rawCsv">Export CSV</button>
     </div>
-    <p class="note">The raw materials needed for everything that's still missing (e.g. piston → planks → logs, cobblestone, iron ingots, redstone). Whatever you checked off in the checklist, already crafted or placed is already subtracted here. Rounding happens only after totaling per intermediate product. "Any Planks/Logs" means the wood type doesn't matter. Use ▸ in the checklist to mark an item as a raw material.</p>
+    <p class="note">The raw materials needed for everything that's still missing (e.g. piston → planks → logs, cobblestone, iron ingots, redstone). Whatever you checked off in the checklist, already crafted or placed is already subtracted here. Rounding happens only after totaling per intermediate product. "Any Planks/Logs" means the wood type doesn't matter. Use ▸ in the checklist to mark an item as "get elsewhere" so it isn't broken down.</p>
     <table><thead><tr><th style="width:34px"></th><th>Raw material</th><th class="num">Needed</th><th class="hide-m">Stacks</th><th class="num">Have</th><th class="num">Open</th></tr></thead>
     <tbody>${raws.map((n) => {
       const id = n.id, own = st[id] || 0, done = n.missing === 0;
       return `<tr class="item ${done ? 'done' : ''}" data-id="${esc(id)}" data-need="${own + n.missing}">
         <td><input type="checkbox" class="chk" data-act="toggle" ${done ? 'checked' : ''} ${p.combo ? 'disabled' : ''}></td>
-        <td><div class="iname">${icon(id)}<span>${esc(MC.displayName(id))}</span>${(p.stopItems || []).includes(id) ? '<span class="pill raw">Raw material</span>' : ''}</div></td>
+        <td><div class="iname">${icon(id)}<span>${esc(MC.displayName(id))}</span>${(p.stopItems || []).includes(id) ? '<span class="pill raw">Get elsewhere</span>' : ''}</div></td>
         <td class="num"><b>${fmt(n.need)}</b></td><td class="hide-m">${stackText(id, n.need)}</td>
         <td class="num">${haveCell(p, id, own)}${n.have > own ? `<div class="sub2">+ ${fmt(n.have - own)} matching in stock</div>` : ''}</td>
         <td class="num">${done ? '<span style="color:var(--accent)">✓</span>' : `${fmt(n.missing)}${n.missing >= MC.stackSize(id) ? `<div style="font-size:11px">${stackText(id, n.missing)}</div>` : ''}`}</td></tr>`;

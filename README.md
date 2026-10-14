@@ -52,7 +52,7 @@ On the website:
 - **Checklist**, **Next steps** (what to gather, what to craft, where to put what you have), **Raw materials**, **Crafting steps**, **3D view**, **Edit & export**.
 - **Share**: "Share" button at the top right, then enter player names. Shared players see the project, enter amounts, set collection chests and can download the schematic (under "Edit & export"). Only the owner can delete and share.
 - **Merge**: if someone already has the same schematic as their own project, the shared project shows a "Merge" button. Collection chests and entered amounts move into the shared project, and the own project is deleted.
-- **Next steps**: one card per final product with everything it needs in total, and the crafting steps in the right order. Plus a gathering list of all missing raw materials.
+- **Next steps**: one card per final product with everything it needs in total, and the crafting steps in the right order. Plus a gathering list of all missing raw materials. Choose the order: *craft as soon as possible*, *gather everything first*, or *one item at a time*. "☆ Do next" on a card puts that item first. Items marked "don't craft – I get it another way" in the checklist (▸) are left out of the plan and listed under "Get elsewhere" at the end.
 - **Stock**: comes from the collection chests (including the contents of shulker boxes and bundles), optionally also from the inventories of members who are online. Manually entered amounts apply until the value in the game changes or you click ✎.
 
 ## With and without the client mod
