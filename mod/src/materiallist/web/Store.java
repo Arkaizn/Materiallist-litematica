@@ -79,6 +79,7 @@ public class Store {
         if (!p.has("shared")) p.add("shared", new JsonArray());
         if (!p.has("items")) p.add("items", new JsonArray());
         if (!p.has("stopItems")) p.add("stopItems", new JsonArray());
+        if (!p.has("methods")) p.add("methods", new JsonObject());
         return p;
     }
 
@@ -178,7 +179,9 @@ public class Store {
         p.add("items", normalizeItems(items));
         p.add("stock", new JsonObject());
         p.add("stopItems", new JsonArray());
+        p.add("methods", new JsonObject());
         p.addProperty("notes", "");
+
         p.addProperty("countInventory", false);
         projects.put(str(p, "id"), p);
         save(p);

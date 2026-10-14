@@ -90,6 +90,129 @@
 
   const SPECIAL_NAMES = { '#planks': 'Any Planks', '#logs': 'Any Logs' };
 
+  /* ---------- Villager trades (Java 1.14+ prices; the real price varies with level, demand and discounts) ---------- */
+  // [villager, item, count, inputs]. Villagers selling items for emeralds, and buying items for one emerald.
+  const SELLS = [
+    ['farmer', 'bread', 6, 1], ['farmer', 'pumpkin_pie', 4, 1], ['farmer', 'apple', 4, 1], ['farmer', 'cookie', 18, 3], ['farmer', 'cake', 1, 1],
+    ['farmer', 'golden_carrot', 3, 3], ['farmer', 'glistering_melon_slice', 3, 4],
+    ['leatherworker', 'leather_chestplate', 1, 7], ['leatherworker', 'leather_leggings', 1, 3], ['leatherworker', 'leather_helmet', 1, 5],
+    ['leatherworker', 'leather_boots', 1, 4], ['leatherworker', 'leather_horse_armor', 1, 6], ['leatherworker', 'saddle', 1, 6],
+    ['fisherman', 'cooked_cod', 6, { emerald: 1, cod: 6 }], ['fisherman', 'cod_bucket', 1, 3], ['fisherman', 'campfire', 1, 2],
+    ['fisherman', 'cooked_salmon', 6, { emerald: 1, salmon: 6 }],
+    ['librarian', 'bookshelf', 1, 9], ['librarian', 'lantern', 1, 1], ['librarian', 'glass', 4, 1], ['librarian', 'clock', 1, 5],
+    ['librarian', 'compass', 1, 4], ['librarian', 'name_tag', 1, 20],
+    ['armorer', 'iron_boots', 1, 4], ['armorer', 'iron_leggings', 1, 7], ['armorer', 'iron_helmet', 1, 5], ['armorer', 'iron_chestplate', 1, 9],
+    ['armorer', 'bell', 1, 36], ['armorer', 'chainmail_leggings', 1, 3], ['armorer', 'chainmail_boots', 1, 1], ['armorer', 'chainmail_helmet', 1, 1],
+    ['armorer', 'chainmail_chestplate', 1, 4], ['armorer', 'shield', 1, 5],
+    ['toolsmith', 'stone_axe', 1, 1], ['toolsmith', 'stone_shovel', 1, 1], ['toolsmith', 'stone_pickaxe', 1, 1], ['toolsmith', 'stone_hoe', 1, 1], ['toolsmith', 'bell', 1, 36],
+    ['weaponsmith', 'iron_axe', 1, 3], ['weaponsmith', 'bell', 1, 36],
+    ['fletcher', 'arrow', 16, 1], ['fletcher', 'flint', 10, { emerald: 1, gravel: 10 }], ['fletcher', 'bow', 1, 2], ['fletcher', 'crossbow', 1, 3],
+    ['cartographer', 'map', 1, 7], ['cartographer', 'item_frame', 1, 7],
+    ['cleric', 'redstone', 2, 1], ['cleric', 'lapis_lazuli', 1, 1], ['cleric', 'glowstone', 1, 4], ['cleric', 'ender_pearl', 1, 5], ['cleric', 'experience_bottle', 1, 3],
+    ['mason', 'brick', 10, 1], ['mason', 'chiseled_stone_bricks', 4, 1], ['mason', 'polished_andesite', 4, 1], ['mason', 'polished_diorite', 4, 1],
+    ['mason', 'polished_granite', 4, 1], ['mason', 'terracotta', 1, 1], ['mason', 'quartz_pillar', 1, 1], ['mason', 'quartz_block', 1, 1],
+    ['butcher', 'rabbit_stew', 1, 1], ['butcher', 'cooked_porkchop', 5, 1], ['butcher', 'cooked_chicken', 8, 1],
+    ['shepherd', 'shears', 1, 2], ['shepherd', 'painting', 3, 2],
+    ['wandering_trader', 'sand', 8, 1], ['wandering_trader', 'red_sand', 4, 1], ['wandering_trader', 'slime_ball', 1, 4], ['wandering_trader', 'blue_ice', 1, 6],
+  ];
+  for (const c of COLORS) {
+    SELLS.push(['mason', c + '_terracotta', 1, 1], ['mason', c + '_glazed_terracotta', 1, 1], ['cartographer', c + '_banner', 1, 3],
+      ['shepherd', c + '_wool', 1, 1], ['shepherd', c + '_carpet', 4, 1], ['shepherd', c + '_bed', 1, 3], ['shepherd', c + '_banner', 1, 3]);
+  }
+  const BUYS = [
+    ['farmer', 'wheat', 20], ['farmer', 'potato', 26], ['farmer', 'carrot', 22], ['farmer', 'beetroot', 15], ['farmer', 'pumpkin', 6], ['farmer', 'melon', 4],
+    ['leatherworker', 'leather', 6], ['leatherworker', 'flint', 26], ['leatherworker', 'rabbit_hide', 9], ['leatherworker', 'turtle_scute', 4],
+    ['fisherman', 'string', 20], ['fisherman', 'coal', 10], ['fisherman', 'cod', 15], ['fisherman', 'salmon', 13], ['fisherman', 'tropical_fish', 6], ['fisherman', 'pufferfish', 4],
+    ['librarian', 'paper', 24], ['librarian', 'book', 4], ['librarian', 'ink_sac', 5],
+    ['armorer', 'coal', 15], ['armorer', 'iron_ingot', 4], ['armorer', 'lava_bucket', 1], ['armorer', 'diamond', 1],
+    ['toolsmith', 'coal', 15], ['toolsmith', 'iron_ingot', 4], ['toolsmith', 'flint', 30], ['toolsmith', 'diamond', 1],
+    ['weaponsmith', 'coal', 15], ['weaponsmith', 'iron_ingot', 4], ['weaponsmith', 'flint', 24], ['weaponsmith', 'diamond', 1],
+    ['fletcher', 'stick', 32], ['fletcher', 'flint', 26], ['fletcher', 'string', 14], ['fletcher', 'feather', 24], ['fletcher', 'tripwire_hook', 8],
+    ['cartographer', 'paper', 24], ['cartographer', 'glass_pane', 11], ['cartographer', 'compass', 1],
+    ['cleric', 'rotten_flesh', 32], ['cleric', 'gold_ingot', 3], ['cleric', 'rabbit_foot', 2], ['cleric', 'turtle_scute', 4], ['cleric', 'glass_bottle', 9], ['cleric', 'nether_wart', 22],
+    ['mason', 'clay_ball', 10], ['mason', 'stone', 20], ['mason', 'granite', 16], ['mason', 'andesite', 16], ['mason', 'diorite', 16], ['mason', 'quartz', 12],
+    ['butcher', 'chicken', 14], ['butcher', 'porkchop', 7], ['butcher', 'rabbit', 4], ['butcher', 'mutton', 7], ['butcher', 'beef', 10],
+    ['butcher', 'dried_kelp_block', 10], ['butcher', 'sweet_berries', 10],
+    ['shepherd', 'white_wool', 18],
+  ];
+  const VILLAGERS = { wandering_trader: 'Wandering Trader' };
+  const villagerName = (v) => VILLAGERS[v] || v.charAt(0).toUpperCase() + v.slice(1);
+  /** All trades that give this item: [{ key, villager, out, in, label }] */
+  const TRADES = {};
+  const addTrade = (villager, id, out, inn, key) => {
+    const t = { key, villager, out, in: inn, via: 'trade with ' + villagerName(villager) };
+    (TRADES[id] = TRADES[id] || []).push(t);
+  };
+  for (const [v, id, out, inn] of SELLS) addTrade(v, id, out, typeof inn === 'number' ? { emerald: inn } : inn, 'trade:' + v);
+  for (const [v, id, n] of BUYS) addTrade(v, 'emerald', 1, { [id]: n }, `trade:${v}:${id}`);
+  const tradesFor = (id) => TRADES[id] || [];
+
+  /* ---------- Where to find raw materials ---------- */
+  const WHERE = [
+    [/^cobblestone$/, 'Mine stone anywhere in the Overworld (or a cobblestone generator)'],
+    [/^stone$/, 'Mine stone with Silk Touch, or smelt cobblestone'],
+    [/^(cobbled_deepslate|deepslate)$/, 'Mine deepslate below Y=0'],
+    [/^(andesite|diorite|granite)$/, 'Patches in stone all over the Overworld'],
+    [/^tuff$/, 'Below Y=16 near deepslate, and in trial chambers'],
+    [/^calcite$/, 'Amethyst geodes and stony peaks'],
+    [/^(dirt|coarse_dirt|grass_block|podzol|rooted_dirt)$/, 'Overworld surface (grass block and podzol need Silk Touch)'],
+    [/^(sand|sandstone)$/, 'Deserts and beaches'],
+    [/^(red_sand|red_sandstone)$/, 'Badlands'],
+    [/^gravel$/, 'Rivers, oceans, gravel patches underground'],
+    [/^(clay_ball|clay)$/, 'Rivers, lakes and lush caves (clay blocks under water)'],
+    [/^(ice|packed_ice|blue_ice|snowball|snow_block|powder_snow_bucket)$/, 'Frozen and snowy biomes, icebergs'],
+    [/^obsidian$/, 'Pour water on lava, mine with a diamond pickaxe; ruined portals'],
+    [/^(netherrack|nether_bricks?|nether_brick)$/, 'Nether'],
+    [/^(soul_sand|soul_soil)$/, 'Nether: soul sand valley'],
+    [/^(basalt|blackstone)$/, 'Nether: basalt deltas (blackstone also in bastions)'],
+    [/^(glowstone_dust|glowstone)$/, 'Nether: glowstone clusters on the ceiling (drops 2–4 dust, Silk Touch for blocks); witches drop dust'],
+    [/^quartz$/, 'Nether: nether quartz ore'],
+    [/^nether_wart$/, 'Nether fortresses (farm it on soul sand)'],
+    [/^(magma_cream|magma_block)$/, 'Nether: magma cubes / basalt deltas'],
+    [/^blaze_rod$/, 'Nether fortresses: blazes'],
+    [/^ghast_tear$/, 'Nether: ghasts'],
+    [/^(end_stone|purpur_block|chorus_fruit)$/, 'The End'],
+    [/^shulker_shell$/, 'End cities: shulkers'],
+    [/^(prismarine_shard|prismarine_crystals|prismarine|sponge|wet_sponge|sea_lantern)$/, 'Ocean monuments (guardians)'],
+    [/^coal$/, 'Coal ore (common, mostly above Y=0)'],
+    [/^(iron_ingot|raw_iron|iron_nugget)$/, 'Iron ore (smelt raw iron), or an iron golem farm'],
+    [/^(gold_ingot|raw_gold|gold_nugget)$/, 'Gold ore (lots in badlands), or a gold farm with piglins'],
+    [/^(copper_ingot|raw_copper)$/, 'Copper ore, lots in dripstone caves'],
+    [/^diamond$/, 'Diamond ore, best around Y=-58'],
+    [/^emerald$/, 'Emerald ore in mountains (rare) – easier: sell items to villagers (choose a trade)'],
+    [/^lapis_lazuli$/, 'Lapis ore, best around Y=0'],
+    [/^redstone$/, 'Redstone ore deep underground (best below Y=-32); witches drop it'],
+    [/^amethyst_shard$/, 'Amethyst geodes'],
+    [/^(netherite_scrap|ancient_debris)$/, 'Nether: ancient debris around Y=15'],
+    [/(_log|_wood|^#logs)$/, 'Trees in the Overworld'],
+    [/(_stem|_hyphae)$/, 'Nether: crimson and warped forests'],
+    [/^string$/, 'Spiders, cobwebs (mineshafts), or a spider farm'],
+    [/^slime_ball$/, 'Slimes in swamps and slime chunks'],
+    [/^(honeycomb|honey_bottle)$/, 'Bee nests (use shears / a glass bottle)'],
+    [/^gunpowder$/, 'Creepers, or a creeper farm'],
+    [/^(bone|bone_meal)$/, 'Skeletons, or a composter'],
+    [/^ender_pearl$/, 'Endermen'],
+    [/^(feather|chicken)$/, 'Chickens'],
+    [/^(leather|beef)$/, 'Cows'],
+    [/^(white_wool|mutton)$/, 'Sheep (shears give more wool)'],
+    [/^(ink_sac)$/, 'Squid'], [/^glow_ink_sac$/, 'Glow squid'],
+    [/^(wheat|wheat_seeds|carrot|potato|beetroot)$/, 'Farm it (villages have farms)'],
+    [/^(sugar_cane|bamboo|cactus|kelp|vine|lily_pad)$/, 'Grows naturally, easy to farm'],
+    [/^(pumpkin|melon)$/, 'Farm it, or find it in the wild'],
+    [/(mushroom)$/, 'Dark places, swamps, mushroom fields'],
+    [/^(moss_block|azalea|flowering_azalea)$/, 'Lush caves'],
+    [/^(mud|mangrove_roots)$/, 'Mangrove swamps (mud: water bottle on dirt)'],
+    [/^(terracotta)$/, 'Badlands'],
+    [/_dye$/, 'Crafted from flowers and other plants'],
+    [/^rotten_flesh$/, 'Zombies'],
+    [/^sweet_berries$/, 'Taiga'],
+  ];
+  function whereOf(id) {
+    const s = short(id);
+    for (const [re, text] of WHERE) if (re.test(s)) return text;
+    return '';
+  }
+
   function logOf(w) {
     if (w === 'crimson' || w === 'warped') return w + '_stem';
     if (w === 'bamboo') return 'bamboo_block';
@@ -110,11 +233,23 @@
       const m = short(id).replace(/^stripped_/, '').match(/^(.+)_(log|stem|planks)$/);
       if (m) woods.add(m[1]);
     });
-    return { custom: opts.custom || {}, stop: opts.stop instanceof Set ? opts.stop : new Set(opts.stop || []), woods };
+    return { custom: opts.custom || {}, methods: opts.methods || {}, stop: opts.stop instanceof Set ? opts.stop : new Set(opts.stop || []), woods };
   }
 
+  /** How the player wants to get an item: 'craft', 'gather' or a trade key (see tradesFor). Empty = default (craft if possible). */
   function recipeFor(id, ctx) {
     ctx = ctx || makeCtx();
+    const how = ctx.methods && Object.prototype.hasOwnProperty.call(ctx.methods, id) ? ctx.methods[id] : '';
+    if (how === 'gather') return null;
+    if (how.startsWith('trade:')) {
+      const t = tradesFor(id).find((x) => x.key === how);
+      if (t) return R(t.out, t.in, t.via);
+    }
+    return defaultRecipe(id, ctx);
+  }
+
+  /** The recipe without the player's choice */
+  function defaultRecipe(id, ctx) {
     if (ctx.custom && Object.prototype.hasOwnProperty.call(ctx.custom, id)) {
       const c = ctx.custom[id];
       return c ? R(c.out || 1, c.in || {}, c.via) : null;
@@ -320,6 +455,7 @@
   }
 
   function hasRecipe(id, opts) { return !!recipeFor(id, makeCtx(opts, [id])); }
+  function canCraft(id, opts) { return !!defaultRecipe(id, makeCtx(opts, [id])); }
 
   function stackSize(id) {
     id = short(id);
@@ -375,5 +511,5 @@
 
   const slotsFor = (id, n) => Math.ceil(n / stackSize(id));
 
-  return { WOODS, TAGS, short, recipeFor, resolve, plan, effStock, placedOf, demandOf, nextText, tree, hasRecipe, stackSize, displayName, categoryOf, CATEGORY_NAMES, hueOf, normalizeItems, slotsFor };
+  return { WOODS, TAGS, short, recipeFor, tradesFor, whereOf, canCraft, resolve, plan, effStock, placedOf, demandOf, nextText, tree, hasRecipe, stackSize, displayName, categoryOf, CATEGORY_NAMES, hueOf, normalizeItems, slotsFor };
 });

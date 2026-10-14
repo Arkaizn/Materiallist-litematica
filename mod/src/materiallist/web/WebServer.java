@@ -292,6 +292,16 @@ public class WebServer {
                     for (JsonElement e : b.getAsJsonArray("stopItems")) { String s = e.isJsonPrimitive() ? Store.cleanId(e.getAsString()) : null; if (s != null && stop.size() < 2000) stop.add(s); }
                     p.add("stopItems", stop);
                 }
+                if (b.has("methods") && b.get("methods").isJsonObject()) {
+                    // How the players want to get each item: craft, gather or a villager trade
+                    JsonObject methods = new JsonObject();
+                    for (var e : b.getAsJsonObject("methods").entrySet()) {
+                        String item = Store.cleanId(e.getKey()), how = e.getValue().isJsonPrimitive() ? e.getValue().getAsString() : "";
+                        if (item != null && how.matches("craft|gather|trade:[a-z_]{1,32}(:[a-z0-9_]{1,64})?") && methods.size() < 2000) methods.addProperty(item, how);
+                    }
+                    p.add("methods", methods);
+                }
+
                 if (b.has("notes") && b.get("notes").isJsonPrimitive()) { String n = b.get("notes").getAsString(); p.addProperty("notes", n.substring(0, Math.min(20000, n.length()))); }
                 if (b.has("clearSync") && b.get("clearSync").isJsonPrimitive() && b.get("clearSync").getAsBoolean()) p.remove("sync");
                 if (owner && b.has("shared") && b.get("shared").isJsonArray()) {

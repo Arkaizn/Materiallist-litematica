@@ -103,6 +103,10 @@ tr.done .iname{text-decoration:line-through}
 .goal summary{cursor:pointer;color:var(--muted)}
 .goal-steps{margin:6px 0 2px;padding-left:22px}
 .goal-steps li{padding:2px 0}
+.how{font-size:11.5px;color:var(--muted);margin-top:2px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;white-space:normal}
+.how select{padding:1px 4px;font-size:11.5px;width:auto;max-width:220px}
+
+.where{font-size:11.5px;color:var(--muted);margin-top:2px;white-space:normal}
 .refresh{display:inline-flex;align-items:center;gap:2px}
 .refresh select{padding:3px 6px;font-size:12px;color:var(--muted);background:none}
 .refresh #refreshBtn{font-size:16px;padding:2px 8px}
@@ -268,7 +272,51 @@ function totalsFor(items, n = (i) => i.count) {
   for (const i of items) { const c = n(i); if (c > 0) { total += c; slots += MC.slotsFor(i.id, c); } }
   return { total, slots, shulkers: slots / SHULKER };
 }
-const resolveOpts = (p) => ({ custom: S.custom, stop: new Set(p.stopItems || []) });
+const resolveOpts = (p) => ({ custom: S.custom, methods: p.methods || {}, stop: new Set(p.stopItems || []) });
+
+/* ---------- How to get an item: craft, gather, trade with villagers, or get it elsewhere ---------- */
+const tradeText = (t, id) => {
+  const ins = Object.entries(t.in).map(([k, v]) => `${v} ${MC.displayName(k)}`).join(' + ');
+  const who = t.via.replace(/^trade with /, '');
+  return id === 'emerald' ? `Sell ${ins} to ${who}` : `Trade with ${who}: ${ins} → ${t.out}`;
+};
+function howOf(p, id) {
+  if ((p.stopItems || []).includes(id)) return 'elsewhere';
+  const m = (p.methods || {})[id];
+  if (m === 'gather' || (m && MC.tradesFor(id).some((t) => t.key === m))) return m;
+  return MC.canCraft(id, { custom: S.custom }) ? 'craft' : 'gather';
+}
+function howSelect(p, id) {
+  if (p.combo || id[0] === '#') return '';
+  const cur = howOf(p, id), trades = MC.tradesFor(id), craft = MC.canCraft(id, { custom: S.custom });
+  const opt = (v, l) => `<option value="${esc(v)}" ${v === cur ? 'selected' : ''}>${esc(l)}</option>`;
+  return `<select data-act="how" data-item="${esc(id)}" aria-label="How do you get ${esc(MC.displayName(id))}?">
+    ${craft ? opt('craft', 'Craft') : ''}${opt('gather', craft ? 'Gather / farm it directly' : 'Gather / farm')}
+    ${trades.length ? `<optgroup label="Villager trades">${trades.map((t) => opt(t.key, tradeText(t, id))).join('')}</optgroup>` : ''}
+    ${opt('elsewhere', "Get elsewhere (leave out of the plan)")}</select>`;
+}
+/** Where an item comes from: location hint, and trades that aren't chosen */
+function whereHtml(p, id) {
+  const cur = howOf(p, id), bits = [];
+  const w = MC.whereOf(id);
+  if (w && cur !== 'craft' && !cur.startsWith('trade:')) bits.push('📍 ' + esc(w));
+  const other = MC.tradesFor(id).filter((t) => t.key !== cur);
+  if (other.length && id !== 'emerald') bits.push('or ' + other.slice(0, 2).map((t) => esc(tradeText(t, id))).join(', '));
+  if (id === 'emerald' && !cur.startsWith('trade:')) bits.push('tip: choose "Sell … to …" to get emeralds from villagers');
+  return bits.length ? `<div class="where">${bits.join(' · ')}</div>` : '';
+}
+function setHow(p, id, how) {
+  const stop = new Set(p.stopItems || []);
+  p.methods = Object.assign({}, p.methods);
+  if (how === 'elsewhere') { stop.add(id); delete p.methods[id]; }
+  else {
+    stop.delete(id);
+    const def = MC.canCraft(id, { custom: S.custom }) ? 'craft' : 'gather';
+    if (how === def) delete p.methods[id]; else p.methods[id] = how;
+  }
+  p.stopItems = [...stop];
+  touch(p); persist({ methods: p.methods, stopItems: p.stopItems });
+}
 
 /* ---------- Sidebar ---------- */
 function renderSidebar() {
@@ -372,7 +420,7 @@ async function openCombo() {
     for (const k in sy.placed || {}) placed[k] = (placed[k] || 0) + sy.placed[k];
   });
   for (const k in fromGame) stock[k] = (stock[k] || 0) + fromGame[k];
-  S.current = { combo: true, id: 'combo', name: 'Combined: ' + full.map((p) => p.name).join(' + '), parts: full, items, stock, sync: { placed }, stopItems: [...new Set(full.flatMap((p) => p.stopItems || []))] };
+  S.current = { combo: true, id: 'combo', name: 'Combined: ' + full.map((p) => p.name).join(' + '), parts: full, items, stock, sync: { placed }, stopItems: [...new Set(full.flatMap((p) => p.stopItems || []))], methods: Object.assign({}, ...full.map((p) => p.methods || {})) };
   if (S.view === 'edit') S.view = 'list';
   S.open.clear();
   renderSidebar(); render();
@@ -541,10 +589,11 @@ function drawRows() {
     for (const i of list) {
       const h = st[i.id] || 0, built = Math.min(i.count, pl[i.id] || 0), open = openOf(i), done = open === 0;
       const isStop = (p.stopItems || []).includes(i.id);
-      const canTree = MC.hasRecipe(i.id, { custom: S.custom });
+      const canTree = MC.hasRecipe(i.id, resolveOpts(p)) || MC.canCraft(i.id, { custom: S.custom }) || MC.tradesFor(i.id).length;
       html += `<tr class="item ${done ? 'done' : ''}" data-id="${esc(i.id)}" data-need="${i.count - built}">
         <td><input type="checkbox" class="chk" data-act="toggle" ${done ? 'checked' : ''} ${p.combo ? 'disabled' : ''} aria-label="Done"></td>
-        <td><div class="iname">${icon(i.id)}<span>${esc(MC.displayName(i.id))}</span>${isStop ? '<span class="pill raw" title="You get this another way, it is not crafted">Get elsewhere</span>' : ''}</div></td>
+        <td><div class="iname">${icon(i.id)}<span>${esc(MC.displayName(i.id))}</span>${isStop ? '<span class="pill raw" title="You get this another way, it is not crafted">Get elsewhere</span>' : (p.methods || {})[i.id] ? `<span class="pill" title="Chosen under ▸">${esc((p.methods[i.id] === 'gather' ? 'gather' : 'trade'))}</span>` : ''}
+</div></td>
         <td class="num"><b>${fmt(i.count)}</b>${built ? `<div class="sub2">${fmt(built)} placed</div>` : ''}</td>
         <td class="hide-m">${stackText(i.id, i.count)}</td>
         <td class="hide-m">${shulkerText(i.id, i.count)}</td>
@@ -564,22 +613,15 @@ function treeHtml(id, count, p) {
     const info = n.crafts ? `<span class="x">${n.crafts}× ${n.via ? esc(n.via) : 'craft'}${n.produced > n.count ? ` · ${n.produced - n.count} left over` : ''}</span>` : (root ? '' : '<span class="pill">Base</span>');
     return `<li><span class="n"><span class="cnt">${fmt(n.count)}</span>${icon(n.id)}${esc(MC.displayName(n.id))} ${info}</span>${kids}</li>`;
   };
-  const stop = (p.stopItems || []).includes(id);
   return `<div class="tree"><ul>${node(t, true)}</ul>
-    ${p.combo ? '' : `<div style="margin-top:8px"><label style="color:var(--muted);font-size:12.5px;display:inline-flex;gap:6px;align-items:center"><input type="checkbox" class="chk" data-act="stop" data-item="${esc(id)}" ${stop ? 'checked' : ''}> Don't craft this – I get it another way (not broken down, listed at the very end of Next steps)</label></div>`}</div>`;
+    ${p.combo ? '' : `<div class="how" style="margin-top:8px;font-size:12.5px">How do you get ${esc(MC.displayName(id))}? ${howSelect(p, id)}</div>${whereHtml(p, id)}`}</div>`;
 }
 // All rows with data-id (checklist, next steps, raw materials) share these actions
 document.addEventListener('change', (e) => {
   const p = S.current;
   if (!p || p.combo) return;
   const act = e.target.dataset.act;
-  if (act === 'stop') {
-    const id = e.target.dataset.item;
-    const set = new Set(p.stopItems || []);
-    e.target.checked ? set.add(id) : set.delete(id);
-    p.stopItems = [...set]; touch(p); persist();
-    return rerender();
-  }
+  if (act === 'how') { setHow(p, e.target.dataset.item, e.target.value); return rerender(); }
   const row = e.target.closest('[data-id]');
   if (!row) return;
   const id = row.dataset.id;
@@ -692,7 +734,7 @@ function renderNext() {
   // At the top: exactly one step
   let hero = '', heroId = null, heroCls = 'craft', heroGoal = null;
   const craftHero = (g) => { heroGoal = g; heroId = g.id; hero = `<div class="hero-t">Craft: ${fmt(g.left)}× ${esc(MC.displayName(g.id))}</div><div class="hero-s">You have all the material for it${order !== 'single' && ready.length > 1 ? `, and for ${ready.length - 1} more (see below)` : ''}.</div>`; };
-  const gatherHero = (id, n, forGoal) => { heroId = id; heroCls = 'gather'; hero = `<div class="hero-t">Gather: ${esc(MC.displayName(id))}</div><div class="hero-s">${amount(id, n)} more${forGoal ? ` for ${esc(MC.displayName(forGoal.id))}` : ` · have ${fmt(N[id].have)} of ${fmt(N[id].need)}`}</div>`; };
+  const gatherHero = (id, n, forGoal) => { heroId = id; heroCls = 'gather'; hero = `<div class="hero-t">Gather: ${esc(MC.displayName(id))}</div><div class="hero-s">${amount(id, n)} more${forGoal ? ` for ${esc(MC.displayName(forGoal.id))}` : ` · have ${fmt(N[id].have)} of ${fmt(N[id].need)}`}</div>${whereHtml(p, id)}`; };
   const goalHero = (g) => {
     if (g.state === 'ready') return craftHero(g);
     heroGoal = g;
@@ -717,25 +759,25 @@ function renderNext() {
   const chk = (id, done) => (p.combo ? '' : `<input type="checkbox" class="chk" data-act="toggle" ${done ? 'checked' : ''} title="${done ? 'Not actually there' : 'I already have it (without subtracting ingredients)'}">`);
   // One card per final product: what you need in total and how to craft it
   const card = (g) => {
-    const raws = g.raws.map((n) => `<span class="chip ${n.missing ? 'no' : 'ok'}"${stop.has(n.id) ? ' title="Get elsewhere"' : ''}>${icon(n.id)} ${fmt(n.need)} ${esc(MC.displayName(n.id))}${n.missing ? ` · missing ${fmt(n.missing)}` : ' ✓'}</span>`).join('');
-    const steps = g.steps.map((n) => `<li><b>${fmt(n.produced)}× ${esc(MC.displayName(n.id))}</b> <span class="sub2" style="display:inline">${esc(n.recipe.via || 'craft')} from ${Object.entries(n.recipe.in).map(([k, v]) => `${fmt(v * n.crafts)} ${esc(MC.displayName(k))}`).join(', ')}</span></li>`).join('');
+    const raws = g.raws.map((n) => `<span class="chip ${n.missing ? 'no' : 'ok'}" title="${stop.has(n.id) ? 'Get elsewhere' : esc(MC.whereOf(n.id))}">${icon(n.id)} ${fmt(n.need)} ${esc(MC.displayName(n.id))}${n.missing ? ` · missing ${fmt(n.missing)}` : ' ✓'}</span>`).join('');
+    const steps = g.steps.map((n) => `<li><b>${fmt(n.produced)}× ${esc(MC.displayName(n.id))}</b> <span class="sub2" style="display:inline">${esc(n.recipe.via || 'craft')} from ${Object.entries(n.recipe.in).map(([k, v]) => `${fmt(v * n.crafts)} ${esc(MC.displayName(k))}`).join(', ')}</span>${n.id === g.id ? '' : ` <span class="how" style="display:inline-flex">${howSelect(p, n.id)}</span>`}</li>`).join('');
     const status = g.state === 'ready' ? '<span class="pill next">ready to craft</span>' : g.state === 'have' ? '<span class="pill next">available, ready to place</span>' : '<span class="pill">material missing</span>';
     const isFocus = g.id === focus;
     const focusBtn = g.state === 'have' || stop.has(g.id) ? '' : `<button class="ghost" data-act="focus" style="padding:2px 8px;font-size:12px;${isFocus ? 'color:var(--accent)' : ''}" title="${isFocus ? 'Stop focusing on this item' : 'Work on this item first: it gets your stock first and decides the next step'}">${isFocus ? '★ Focused' : '☆ Do next'}</button>`;
     const body = g.state === 'have' ? ''
-      : g.raw ? `<div class="goal-need">${stop.has(g.id) ? 'You get this another way.' : 'This is a raw material: just gather it.'} Have ${fmt(g.have)} of ${fmt(g.need)}.</div>`
+      : g.raw ? `<div class="goal-need">${stop.has(g.id) ? 'You get this another way.' : 'Gather it directly.'} Have ${fmt(g.have)} of ${fmt(g.need)}.${whereHtml(p, g.id)}</div>`
       : `<div class="goal-need"><span class="lbl">You need in total</span>${raws || '<span class="sub2">only what you already have</span>'}</div>
          <details ${g.state === 'ready' || g === heroGoal ? 'open' : ''}><summary>${g.steps.length} crafting step${g.steps.length === 1 ? '' : 's'} in this order</summary><ol class="goal-steps">${steps}</ol></details>`;
     return `<div class="goal ${g.state}" data-id="${esc(g.id)}" data-need="${g.need}">
       <div class="goal-h">${chk(g.id, g.state === 'have')}${icon(g.id)}<b>${fmt(g.state === 'have' ? g.need : g.left)}× ${esc(MC.displayName(g.id))}</b>${g.have && g.left ? `<span class="sub2">${fmt(g.have)} of ${fmt(g.need)} already there</span>` : ''}${status}
-        <span style="margin-left:auto;display:flex;gap:6px;align-items:center">${focusBtn}${g.state === 'ready' && !p.combo && !p.sync ? '<button class="primary" data-act="craft" title="Subtract ingredients and credit the result">Crafted</button>' : ''}</span></div>${body}</div>`;
+        <span style="margin-left:auto;display:flex;gap:6px;align-items:center"><span class="how" style="margin:0">${howSelect(p, g.id)}</span>${focusBtn}${g.state === 'ready' && !p.combo && !p.sync ? '<button class="primary" data-act="craft" title="Subtract ingredients and credit the result">Crafted</button>' : ''}</span></div>${body}</div>`;
   };
   const rawRow = (id) => {
     const nd = N[id], done = nd.missing === 0, next = !done && id === heroId && heroCls === 'gather';
     const uses = goals.filter((g) => g.plan.nodes[id] && g.plan.nodes[id].need > 0 && g.id !== id).map((g) => esc(MC.displayName(g.id)));
     return `<tr class="item ${done ? 'done' : ''}${next ? ' nextup' : ''}" data-id="${esc(id)}" data-need="${own(id) + nd.missing}">
       <td style="width:34px">${chk(id, done)}</td>
-      <td><div class="iname">${icon(id)}<span>${esc(MC.displayName(id))}</span>${next ? '<span class="pill next">next up</span>' : ''}</div>${uses.length && !done ? `<div class="sub2 rec">For: ${uses.slice(0, 6).join(', ')}${uses.length > 6 ? ' …' : ''}${nd.final ? ' · and to place directly' : ''}</div>` : ''}</td>
+      <td><div class="iname">${icon(id)}<span>${esc(MC.displayName(id))}</span>${next ? '<span class="pill next">next up</span>' : ''}</div>${uses.length && !done ? `<div class="sub2 rec">For: ${uses.slice(0, 6).join(', ')}${uses.length > 6 ? ' …' : ''}${nd.final ? ' · and to place directly' : ''}</div>` : ''}${done ? '' : `<div class="sub2 rec">${howSelect(p, id) ? `<div class="how">How: ${howSelect(p, id)}</div>` : ''}${whereHtml(p, id)}</div>`}</td>
       <td class="num"><b>${fmt(nd.need)}</b></td>
       <td class="num">${haveCell(p, id, own(id))}${nd.have > own(id) ? `<div class="sub2">+ ${fmt(nd.have - own(id))} matching in stock</div>` : ''}</td>
       <td class="num" style="width:120px">${done ? '<span style="color:var(--accent)">✓</span>' : amount(id, nd.missing)}</td></tr>`;
@@ -754,9 +796,10 @@ function renderNext() {
     ${current ? sec('Current item', focus === current.id ? 'focused' : 'first unfinished item in the list – use ☆ Do next to pick another one', card(current)) : ''}
     ${order === 'gather' ? gatherSec + craftSec : craftSec + gatherSec}
     ${sec('Craft afterwards', 'Material is still missing here (red)', wait.filter((g) => g !== skip).map(card).join(''))}
-    ${sec('Get elsewhere', 'Marked as "don\'t craft" in the checklist – not part of the plan above', elsewhere.length ? rawTable(elsewhere) : '')}
+    ${sec('Get elsewhere', 'Set to "Get elsewhere" – not part of the plan above', elsewhere.length ? rawTable(elsewhere) : '')}
     ${have.length || doneRaw.length ? `<details class="donebox"><summary>Done (${have.length} final products ready to place, ${doneRaw.length} raw materials complete)</summary>${have.map(card).join('')}${doneRaw.length ? `<table><tbody>${doneRaw.map(rawRow).join('')}</tbody></table>` : ''}</details>` : ''}
-    <p class="note" style="margin-top:18px">Each card is a final product from your list, with everything you need for it in total and the crafting steps to get there. Intermediate products (sticks, planks, torches …) only show up there as steps. The checkmark means "I already have it". "Crafted" subtracts the ingredients of the whole chain and credits the result. "☆ Do next" puts an item first: it gets your stock first and decides the next step. Items marked "don't craft" in the checklist (▸) are listed under "Get elsewhere" at the end.</p>`;
+    <p class="note" style="margin-top:18px">Each card is a final product from your list, with everything you need for it in total and the crafting steps to get there. Intermediate products (sticks, planks, torches …) only show up there as steps. The checkmark means "I already have it". "Crafted" subtracts the ingredients of the whole chain and credits the result. "☆ Do next" puts an item first: it gets your stock first and decides the next step. With the "How" menus you choose for every item whether you craft it, gather it, trade it from a villager (it then costs emeralds, and for emeralds you can choose which items to sell) or get it elsewhere (listed at the end). Villager prices are the usual ones and can differ with level, demand and discounts.</p>`;
+
   $('#order').onchange = (e) => { S.order = e.target.value; saveUi(); renderNext(); };
   bindSync(p);
 }
@@ -782,7 +825,7 @@ function renderRaw() {
       <label><input type="checkbox" class="chk" id="rsd" ${S.rawShowDone ? 'checked' : ''}> Show completed${hidden ? ` (${hidden})` : ''}</label>
       <button class="ghost" id="rawCsv">Export CSV</button>
     </div>
-    <p class="note">The raw materials needed for everything that's still missing (e.g. piston → planks → logs, cobblestone, iron ingots, redstone). Whatever you checked off in the checklist, already crafted or placed is already subtracted here. Rounding happens only after totaling per intermediate product. "Any Planks/Logs" means the wood type doesn't matter. Use ▸ in the checklist to mark an item as "get elsewhere" so it isn't broken down.</p>
+    <p class="note">The raw materials needed for everything that's still missing (e.g. piston → planks → logs, cobblestone, iron ingots, redstone). Whatever you checked off in the checklist, already crafted or placed is already subtracted here. Rounding happens only after totaling per intermediate product. "Any Planks/Logs" means the wood type doesn't matter. Use ▸ in the checklist to choose how you get an item (craft, gather, villager trade, or elsewhere).</p>
     <table><thead><tr><th style="width:34px"></th><th>Raw material</th><th class="num">Needed</th><th class="hide-m">Stacks</th><th class="num">Have</th><th class="num">Open</th></tr></thead>
     <tbody>${raws.map((n) => {
       const id = n.id, own = st[id] || 0, done = n.missing === 0;
